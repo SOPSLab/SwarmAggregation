@@ -1,5 +1,6 @@
 # Project:     Swarm Aggregation
 
+import datetime
 import math
 import numpy as np
 import random
@@ -44,8 +45,10 @@ def init_sys_symmetric(n) :
     circ_traj_rot_radius = 14.45
     puck_radius = 3.7
     # initial_config_circ_radius = (n+1) * circ_traj_rot_radius * 3
-    # initial_config_circ_radius = (n+1) * circ_traj_rot_radius
-    initial_config_circ_radius = 45
+    initial_config_circ_radius = (n+1) * circ_traj_rot_radius
+    if (n==10):
+        initial_config_circ_radius = 125
+    # initial_config_circ_radius = 45
     # initial_config_circ_radius = 25
     theta_step = (2*math.pi) / n
     for i in range(0, n) :
@@ -87,33 +90,46 @@ def init_sys_random(n, seed) :
 
 
 
+
+
 def collision_control(arr) :
-    spring_constant = 6080
+    spring_constant = 3090
+    # spring_constant = 3090*2
+    # spring_constant = 100
     for a in range(len(arr)):
         for b in range(len(arr)):
-            robot = arr[a]
-            other = arr[b]
-            if(dist(robot, other) > 0 and dist(robot, other) < (2*robot.robot_radius)):
+            if(dist(arr[a], arr[b]) > 0 and dist(arr[a], arr[b]) < 7.4):
                 # print("collision.")
-                spring_force = spring_constant * ( (2*robot.robot_radius) - (dist(robot, other)) )
-                theta = math.atan( (other.Y-robot.Y) / (other.X-robot.X) )
+                spring_force = spring_constant * ( (2*arr[a].robot_radius) - (dist(arr[a], arr[b])) )
+                theta = math.atan( (arr[b].Y-arr[a].Y) / (arr[b].X-arr[a].X) )
                 x_compon_force = spring_force * math.cos(theta)
                 y_compon_force = spring_force * math.sin(theta)
-                if (other.X > robot.X and other.Y > robot.Y):
-                    x_compon_force = x_compon_force * (-1)
-                    y_compon_force = y_compon_force * (-1)
-                elif (other.X < robot.X and other.Y < robot.Y):
-                    x_compon_force = x_compon_force
-                    y_compon_force = y_compon_force
-                elif (other.X > robot.X and other.Y < robot.Y):
-                    x_compon_force = x_compon_force * (-1)
-                    y_compon_force = y_compon_force * (-1)
-                elif (other.X < robot.X and other.Y > robot.Y):
-                    x_compon_force = x_compon_force
-                    y_compon_force = y_compon_force
-                robot.forces_x += x_compon_force
-                robot.forces_y += y_compon_force
-        arr[a] = robot
+
+                if (arr[b].X > arr[a].X and arr[b].Y < arr[a].Y):  # -x,+y
+                    if (x_compon_force > 0):
+                        x_compon_force = x_compon_force * (-1)
+                    if (y_compon_force < 0):
+                        y_compon_force = y_compon_force * (-1)
+                elif (arr[b].X < arr[a].X and arr[b].Y < arr[a].Y):   # +x,+y
+                    if (x_compon_force < 0):
+                        x_compon_force = x_compon_force * (-1)
+                    if (y_compon_force < 0):
+                        y_compon_force = y_compon_force * (-1)
+                elif (arr[b].X > arr[a].X and arr[b].Y > arr[a].Y):   # -x,-y
+                    if (x_compon_force > 0):
+                        x_compon_force = x_compon_force * (-1)
+                    if (y_compon_force > 0):
+                        y_compon_force = y_compon_force * (-1)
+                elif (arr[b].X < arr[a].X and arr[b].Y > arr[a].Y):   # +x,-y
+                    if (x_compon_force < 0):
+                        x_compon_force = x_compon_force * (-1)
+                    if (y_compon_force > 0):
+                        y_compon_force = y_compon_force * (-1)
+
+                arr[a].forces_x += x_compon_force
+                arr[a].forces_y += y_compon_force
+
+
 
 
 
@@ -230,9 +246,10 @@ def robot_in_sight(robot, robot_array, alpha):
 
 
 
-def update_system(prev_system_arr, errorprob_bool, noise_val, sensor_alpha, seed) :
+def update_system(prev_step_arr, errorprob_bool, noise_val, sensor_alpha, seed) :
     rng = np.random.default_rng(seed)
 
+    prev_system_arr = prev_step_arr
     new_system_arr = []
 
     circ_traj_radius = 14.45        # Gauci paper; in cm
@@ -249,8 +266,6 @@ def update_system(prev_system_arr, errorprob_bool, noise_val, sensor_alpha, seed
                     sight_scope = True
 
         if (sight_scope == True) :      # robot in sight -> rotate clockwise in place @ -5.02 rad/s
-            # print("robot in sight")
-            # new_theta = (prev_system_arr[i].theta - 5*(.00502/2)) % (2*math.pi)
             new_theta = (prev_system_arr[i].theta - (.00502/2)) % (2*math.pi)
             if (new_theta < 0) :
                 new_theta = (2*math.pi) + new_theta
@@ -302,6 +317,8 @@ def dispersion_stopping_condition(robotarr):
     for k in range(n):
         dispersion_val += distArrays([robotarr[k].X, robotarr[k].Y], centroid)
 
+    # print(dispersion_val)
+
     if (n >= 169):
         ideal_cluster = (1*(2*rr) * 6) + (2*(2*rr) * 12) + (3*(2*rr) * 18) + (4*(2*rr) * 24) + (5*(2*rr) * 30) + (6*(2*rr) * 36) + (7*(2*rr) * 42) + (8*(2*rr) * (n-169))
     elif (n >= 127):
@@ -320,7 +337,6 @@ def dispersion_stopping_condition(robotarr):
         ideal_cluster = (1*(2*rr) * (n-1))
 
     if (dispersion_val <= 1.15 * ideal_cluster):
-    # if (dispersion_val <= 1.20 * ideal_cluster):
         return (True, dispersion_val / ideal_cluster)     # TERMINATE RUN; STOPPING CONDITION MET
     else:
         return (False, dispersion_val / ideal_cluster)
@@ -331,63 +347,78 @@ def dispersion_stopping_condition(robotarr):
 
 
 
+
+
 def aggregation(_N, _T, _init, _noise, _stopping, _savehistory, _seed):
+    # start_time = datetime.datetime.now()
+
+
     if _init is 'random':
-        config = np.array(init_sys_random(_N, _seed))
+        init_config = init_sys_random(_N, _seed)
     elif _init is 'symmetric':
-        config = np.array(init_sys_symmetric(_N))
+        init_config = init_sys_symmetric(_N)
     else:
         assert False, 'ERROR: Unrecognized initialization method: ' + _init
-    init_config = np.copy(config)
 
-    history = []
-    history.append(init_config)
-
-    if (_stopping[0] == True):
+    if (_savehistory == False):
         step = 1
-        while (True):
-            if _noise[0] == 'errorprob':
-                history.append( update_system(history[step-1], 1, _noise[1], _T, _seed) )
-                collision_control(history[step])
-                elastic_poten_and_motion_to_kinetic(history[step])
-                clear_forces(history[step])
-            elif _noise[0] == 'motion':
-                history.append( update_system(history[step-1], 0, 0, _T, _seed) )
-                collision_control(history[step])
-                motion_noise(history[step], _noise[1], _seed)
-                elastic_poten_and_motion_to_kinetic(history[step])
-                clear_forces(history[step])
+        curr_step = init_config
+        step += 1
+        while (step <= 300 * 2*1000):
+            if (_noise[0] == 'errorprob'):
+                curr_step = update_system(curr_step, True, _noise[1], _T, _seed)
+            elif (_noise[0] == 'motion'):
+                curr_step = update_system(curr_step, False, 0, _T, _seed)
+                motion_noise(curr_step, _noise[1], _seed)
             else:
                 assert False, 'ERROR: Unrecognized interaction rule ' + _noise[0]
-
-            if (step % 1000*2 == 0):
-                stopping = dispersion_stopping_condition(history[step-1])
-                if (stopping[0] == False):
+            collision_control(curr_step)
+            elastic_poten_and_motion_to_kinetic(curr_step)
+            clear_forces(curr_step)
+            if (step % (1 * 1000*2) == 0):
+                stopping = dispersion_stopping_condition(curr_step)
+                if (stopping[0] == True):
                     break
-                elif (step % 60 * 1000*2 == 0):
-                    print(stopping[1])
-
             step += 1
-
-    else:
-        for step in range(1, _stopping[1]):
-            if _noise[0] == 'errorprob':
-                history.append( update_system(history[step-1], 1, _noise[1], _T, _seed) )
-                # collision_control(history[step])
+        # print(step)
+        # print(datetime.datetime.now() - start_time)
+        return step
+    else :   # _savehistory == True
+        if (_stopping[0] == True):
+            history = []
+            history.append(init_config)
+            step = 1
+            while (step <= 300 * 2*1000):
+                if (_noise[0] == 'errorprob'):
+                    history.append( update_system(history[step-1], True, _noise[1], _T, _seed) )
+                elif (_noise[0] == 'motion'):
+                    history.append( update_system(history[step-1], False, 0, _T, _seed) )
+                    motion_noise(history[step], _noise[1], _seed)
+                else:
+                    assert False, 'ERROR: Unrecognized interaction rule ' + _noise[0]
+                collision_control(history[step])
                 elastic_poten_and_motion_to_kinetic(history[step])
                 clear_forces(history[step])
-            elif _noise[0] == 'motion':
-                history.append( update_system(history[step-1], 0, 0, _T, _seed) )
-                # collision_control(history[step])
-                motion_noise(history[step], _noise[1], _seed)
+                if (step % (1 * 1000*2) == 0):
+                    stopping = dispersion_stopping_condition(history[step])
+                    if (stopping[0] == True):
+                        break
+                step += 1
+            allRawData_arr = robotObjArr_to_RawDataArr(history)
+            return np.array(allRawData_arr)
+        else:   # _stopping[0] == False
+            history = []
+            history.append(init_config)
+            for step in range(1, _stopping[1]):
+                if (_noise[0] == 'errorprob'):
+                    history.append( update_system(history[step-1], True, _noise[1], _T, _seed) )
+                elif (_noise[0] == 'motion'):
+                    history.append( update_system(history[step-1], False, 0, _T, _seed) )
+                    motion_noise(history[step], _noise[1], _seed)
+                else:
+                    assert False, 'ERROR: Unrecognized interaction rule ' + _noise[0]
+                collision_control(history[step])
                 elastic_poten_and_motion_to_kinetic(history[step])
                 clear_forces(history[step])
-            else:
-                assert False, 'ERROR: Unrecognized interaction rule ' + _noise[0]
-
-
-    allRawData_arr = robotObjArr_to_RawDataArr(history)
-    if (_savehistory == True):
-        return np.array(allRawData_arr)
-    else:
-        return len(allRawData_arr)
+            allRawData_arr = robotObjArr_to_RawDataArr(history)
+            return np.array(allRawData_arr)
