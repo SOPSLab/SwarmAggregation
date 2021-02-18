@@ -364,7 +364,7 @@ def aggregation(_N, _T, _init, _noise, _stopping, _savehistory, _seed):
         step = 1
         curr_step = init_config
         step += 1
-        while (step <= 300 * 2*1000):
+        while (step < 300 * 2*1000):
             if (_noise[0] == 'errorprob'):
                 curr_step = update_system(curr_step, True, _noise[1], _T, _seed)
             elif (_noise[0] == 'motion'):
@@ -388,7 +388,7 @@ def aggregation(_N, _T, _init, _noise, _stopping, _savehistory, _seed):
             history = []
             history.append(init_config)
             step = 1
-            while (step <= 300 * 2*1000):
+            while (step < 300 * 2*1000):
                 if (_noise[0] == 'errorprob'):
                     history.append( update_system(history[step-1], True, _noise[1], _T, _seed) )
                 elif (_noise[0] == 'motion'):

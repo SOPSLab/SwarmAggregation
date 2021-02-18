@@ -742,7 +742,7 @@ class Experiment(object):
         ax.plot(x, onehund_data['ave'], color=colors[3], label='100 robots')
         plot_errortube(ax, x, onehund_data['ave'], onehund_data['stddev'], to_hex(colors[3]))
 
-        ax.set(title='Effect of Motion Noise on Runtime', xlabel='Motion Noise Force (N)', ylabel='Runtime (# Seconds)')
+        ax.set(title='Effect of Motion Noise on Runtime', xlabel='Maximum Motion Noise Force (N)', ylabel='Runtime (# Seconds)')
         ax.legend(loc='upper right')
         ax.grid()
 
@@ -829,7 +829,7 @@ def plot_load_noise(runtimes, filename):
             new_row.append(runtimes[run][iter]/2000)
         ten_data.append(new_row)
 
-    x = [0.0 + (i*.25) for i in range(len(ten_data))]
+    x = [0.0 + (i*.0025) for i in range(len(ten_data))]
 
     ten_data = aggregate_stats(ten_data)
 
@@ -838,16 +838,16 @@ def plot_load_noise(runtimes, filename):
 
     fig,ax = plt.subplots()
 
-    ax.plot(x, ten_data['ave'], color=colors[0], label='10 robots')
+    ax.plot(x, ten_data['ave'], color=colors[0], label='25 robots')
     plot_errortube(ax, x, ten_data['ave'], ten_data['stddev'], to_hex(colors[0]))
 
 
-    ax.set(title='Effect of Motion Noise on Runtime', xlabel='Motion Noise Force (N)', ylabel='Runtime (Seconds)')
+    ax.set(title='Effect of Error Probability Noise on Runtime', xlabel='Error Probability', ylabel='Runtime (Seconds)')
     ax.legend(loc='upper right')
     ax.grid()
 
 
-    fig.savefig('figs/' + filename + '_noise_motion.png', dpi=300)
+    fig.savefig('figs/' + filename + '_noise_errorprob.png', dpi=300)
     plt.close()
 
 
@@ -894,12 +894,13 @@ def exp0(_seed=None):
     # exp.animate(0, 0)
 
 def exp_test(_seed=None):
-    params = {'N' : [100], 'S' : [240 * 1000*2], 'T' : [0], 'noise_p' : [0.00]}
-    exp = Experiment(_id='test', _params=params, _init='random', _noise='errorprob', _stopping=False, _savehistory=True, _iters=1, _seed=_seed)
+    params = {'N' : [100], 'S' : [0], 'T' : [0], 'noise_p' : [0.00]}
+    exp = Experiment(_id='test', _params=params, _init='random', _noise='errorprob', _stopping=True, _savehistory=False, _iters=1, _seed=_seed)
     exp.run()
     exp.save()
     print(exp.fname)
-    exp.plot_exp0(0,0)
+    print(exp.runs_data)
+    # exp.plot_exp0(0,0)
     # exp.animate(0,0)
 
 # Error probability noise
@@ -907,8 +908,8 @@ def exp1_errorprob(_seed=None):
     params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .1000001, .002)}
     exp = Experiment(_id='1errorprob', _params=params, _init='random', _noise='errorprob', _stopping=True, _savehistory=False, _iters=20, _seed=_seed)
     exp.run()
-    print(exp.fname)
     exp.save()
+    print(exp.fname)
     # exp.plot_exp1_errorprob()
 
 # 'Motion' noise
@@ -916,9 +917,10 @@ def exp1_motion(_seed=None):
     params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, 10.0001, .2)}
     exp = Experiment(_id='1motion', _params=params, _init='random', _noise='motion', _stopping=True, _savehistory=False, _iters=20, _seed=_seed)
     exp.run()
-    print(exp.fname)
     exp.save()
+    print(exp.fname)
     # exp.plot_exp1_motion()
+
     # exp.plot_exp0(0,0)
     # run=0
     # while(run <= 2):
@@ -937,10 +939,10 @@ def exp2(_seed=None):
 
 
 def expload(_seed=None):
-    filename='exp1motion_23196431_234356338143.pkl'
+    filename='exp1errorprob_9123735_111435885763.pkl'
     data = load(filename)
     print(data.runs_data)
-    print(data.params[0])
+    # print(data.params[1])
     plot_load_noise(data.runs_data, data.fname)
 
 
