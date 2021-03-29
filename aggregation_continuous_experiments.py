@@ -1066,10 +1066,10 @@ def exp0(_seed=None):
     exp.animate(0, 0)
 
 def exp_test(_seed=None):
-    params = {'N' : [100], 'S' : [0], 'T' : [0], 'noise_p' : [.5], 'time_step' : [10]}
+    params = {'N' : [100], 'S' : [0], 'T' : [0], 'noise_p' : [0,.15], 'time_step' : [10]}
     # params = {'N' : [100], 'S' : [300], 'T' : [0], 'noise_p' : [.25,.5], 'time_step' : [10]}
     # params = {'N' : [25, 100], 'S' : [0], 'T' : [0], 'noise_p' : [.01,.02], 'time_step' : [10]}
-    exp = Experiment(_id='test', _params=params, _init='random', _noise='motion', _stopping=True, _savehistory=False, _iters=1, _seed=_seed)
+    exp = Experiment(_id='test', _params=params, _init='random', _noise='motion', _stopping=True, _savehistory=False, _iters=2, _seed=_seed)
     exp.run()
     exp.save()
     print(exp.fname)
@@ -1093,7 +1093,7 @@ def exp1_errorprob(_seed=None):
 
 # 'Motion' noise
 def exp1_motion(_seed=None):
-    params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .50001, .01), 'time_step' : [10]}
+    params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .50001, .0125), 'time_step' : [10]}
     exp = Experiment(_id='1motion', _params=params, _init='random', _noise='motion', _stopping=True, _savehistory=False, _iters=10, _seed=_seed)
     exp.run()
     exp.save()
