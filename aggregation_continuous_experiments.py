@@ -1066,8 +1066,10 @@ def exp0(_seed=None):
     exp.animate(0, 0)
 
 def exp_test(_seed=None):
-    params = {'N' : [10, 25, 50], 'S' : [0], 'T' : [0], 'noise_p' : [1], 'time_step' : [10]}
-    exp = Experiment(_id='test', _params=params, _init='random', _noise='motion', _stopping=True, _savehistory=False, _iters=2, _seed=_seed)
+    params = {'N' : [100], 'S' : [0], 'T' : [0], 'noise_p' : [.5], 'time_step' : [10]}
+    # params = {'N' : [100], 'S' : [300], 'T' : [0], 'noise_p' : [.25,.5], 'time_step' : [10]}
+    # params = {'N' : [25, 100], 'S' : [0], 'T' : [0], 'noise_p' : [.01,.02], 'time_step' : [10]}
+    exp = Experiment(_id='test', _params=params, _init='random', _noise='motion', _stopping=True, _savehistory=False, _iters=1, _seed=_seed)
     exp.run()
     exp.save()
     print(exp.fname)
@@ -1077,40 +1079,38 @@ def exp_test(_seed=None):
     # for run in range(len(exp.params)):
     #     exp.animate(run,0)
 
+
+
+
+
 # Error probability noise
 def exp1_errorprob(_seed=None):
-    params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .1000001, .002)}
-    exp = Experiment(_id='1errorprob', _params=params, _init='random', _noise='errorprob', _stopping=True, _savehistory=False, _iters=20, _seed=_seed)
+    params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .02000001, .0005), 'time_step' : [10]}
+    exp = Experiment(_id='1errorprob', _params=params, _init='random', _noise='errorprob', _stopping=True, _savehistory=False, _iters=10, _seed=_seed)
     exp.run()
     exp.save()
     print(exp.fname)
-    # exp.plot_exp1_errorprob()
 
 # 'Motion' noise
 def exp1_motion(_seed=None):
-    # params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, 10.0001, .2)}
-    params = {'N' : [10, 25], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, 10.0001, .4)}
+    params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .50001, .01), 'time_step' : [10]}
     exp = Experiment(_id='1motion', _params=params, _init='random', _noise='motion', _stopping=True, _savehistory=False, _iters=10, _seed=_seed)
     exp.run()
     exp.save()
     print(exp.fname)
-    # exp.plot_exp1_motion()
-
-    # exp.plot_exp0(0,0)
-    # run=0
-    # while(run <= 2):
-    #     exp.plot_exp0(run,0)
-    #     exp.plot_exp0(run,1)
-    #     run+=1
 
 # Cone of sight vs. line of sight
 def exp2(_seed=None):
-    params = {'N' : [50], 'S' : [0], 'T' : np.arange(0, math.pi+.00001, math.pi/24), 'noise_p' : [0.0]}
+    params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : np.arange(0, math.pi+.00001, math.pi/36), 'noise_p' : [0.0], 'time_step' : [10]}
     exp = Experiment(_id='2', _params=params, _init='random', _noise='errorprob', _stopping=True, _savehistory=False, _iters=10, _seed=_seed)
     exp.run()
     exp.save()
     print(exp.fname)
-    # exp.plot_exp2()
+
+
+
+
+
 
 def expload(_seed=None):
     # # filename='exp1errorprob_9123735_111435885763.pkl'
