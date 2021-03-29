@@ -90,16 +90,35 @@ def init_sys_random(n, seed) :
 
 
 
+def init_sys_custom():
+    # Deadlock - rigid: one pair of paritcles and one triplet of particles (mirrors figure in paper)
+    # See data/expdeadlock_45907581_190324472155_run0_iter0animation.pkl for direct visualization
+    coords_thetas = [ [0,0, math.pi], [0,7.4, 0], [40,0, 5*math.pi/6], [40,7.4, math.pi/6], [40+(math.sqrt(7.4**2-3.7**2)),3.7, 3*math.pi/2] ]
+
+    # Deadlock - "natural": two individually aggregated yet separated clusters
+    # See data/expdeadlock_987342234_203227346276_run0_iter0animation.pkl for direct visualization
+    coords_thetas = [ [0,0, math.pi/2], [7.4,0, math.pi], [14.8,0, 0], [22.2,0, 3*math.pi/2],   [3.7,math.sqrt(7.4**2-3.7**2), math.pi/4], [11.1,math.sqrt(7.4**2-3.7**2), 0], [18.5,math.sqrt(7.4**2-3.7**2), 7*math.pi/4],   [3.7,-1*math.sqrt(7.4**2-3.7**2), 3*math.pi/4], [11.1,-1*math.sqrt(7.4**2-3.7**2), math.pi], [18.5,-1*math.sqrt(7.4**2-3.7**2), 5*math.pi/4],
+                      [100,-35, math.pi/2], [100+7.4,-35, math.pi], [100+14.8,-35, 3*math.pi/2],   [100+3.7,-35+math.sqrt(7.4**2-3.7**2), math.pi/6], [100+11.1,-35+math.sqrt(7.4**2-3.7**2), 11*math.pi/6],   [100+3.7,-35-math.sqrt(7.4**2-3.7**2), 5*math.pi/6], [100+11.1,-35-math.sqrt(7.4**2-3.7**2), 7*math.pi/6] ]
+
+    robot_array = []
+    for i in range(len(coords_thetas)):
+        robot_array.append( Robot(coords_thetas[i][0], coords_thetas[i][1], coords_thetas[i][2], 3.7, .152, 0, 0) )
+
+    return robot_array
 
 
-def collision_control(arr) :
-    spring_constant = 3090
-    # spring_constant = 3090*2
+
+
+
+def collision_control(arr, time_step) :
+    # spring_constant = 3090
     # spring_constant = 100
+    # spring_constant = 16.5
+    spring_constant = 21964 / (28.9 * (time_step**2))
+
     for a in range(len(arr)):
         for b in range(len(arr)):
             if(dist(arr[a], arr[b]) > 0 and dist(arr[a], arr[b]) < 7.4):
-                # print("collision.")
                 spring_force = spring_constant * ( (2*arr[a].robot_radius) - (dist(arr[a], arr[b])) )
                 theta = math.atan( (arr[b].Y-arr[a].Y) / (arr[b].X-arr[a].X) )
                 x_compon_force = spring_force * math.cos(theta)
@@ -146,17 +165,17 @@ def motion_noise(robot_array, max_force, seed):
 
 
 
-def elastic_poten_and_motion_to_kinetic(robot_array):
+def elastic_poten_and_motion_to_kinetic(robot_array, _time_step):
     for i in range(len(robot_array)):
-        x_impulse = robot_array[i].forces_x * .0005      # N*s or kg*m/s
+        x_impulse = robot_array[i].forces_x * (_time_step/1000)      # N*s or kg*m/s
         x_velo = x_impulse / robot_array[i].mass        # m/s
         converted_cm_ms_x_velo = x_velo / 10
-        robot_array[i].X += (converted_cm_ms_x_velo / 2)
+        robot_array[i].X += converted_cm_ms_x_velo * _time_step
 
-        y_impulse = robot_array[i].forces_y * .0005     # N*s or kg*m/s
+        y_impulse = robot_array[i].forces_y * (_time_step/1000)     # N*s or kg*m/s
         y_velo = y_impulse / robot_array[i].mass        # m/s
         converted_cm_ms_y_velo = y_velo / 10
-        robot_array[i].Y += (converted_cm_ms_y_velo / 2)
+        robot_array[i].Y += converted_cm_ms_y_velo * _time_step
 
 
 
@@ -246,7 +265,7 @@ def robot_in_sight(robot, robot_array, alpha):
 
 
 
-def update_system(prev_step_arr, errorprob_bool, noise_val, sensor_alpha, seed) :
+def update_system(prev_step_arr, errorprob_bool, noise_val, sensor_alpha, _time_step, seed) :
     rng = np.random.default_rng(seed)
 
     prev_system_arr = prev_step_arr
@@ -266,16 +285,16 @@ def update_system(prev_step_arr, errorprob_bool, noise_val, sensor_alpha, seed) 
                     sight_scope = True
 
         if (sight_scope == True) :      # robot in sight -> rotate clockwise in place @ -5.02 rad/s
-            new_theta = (prev_system_arr[i].theta - (.00502/2)) % (2*math.pi)
+            new_theta = (prev_system_arr[i].theta - (.00502*_time_step)) % (2*math.pi)
             if (new_theta < 0) :
                 new_theta = (2*math.pi) + new_theta
             new_pos_x = prev_system_arr[i].X
             new_pos_y = prev_system_arr[i].Y
         else :      # no robot in sight -> move clockwise on circ. trajectory with R = 14.45 cm @ -.75 rad/s
-            new_pos_x = prev_system_arr[i].X + ( circ_traj_radius*math.cos(prev_system_arr[i].theta-(.00075/2)) - circ_traj_radius*math.cos(prev_system_arr[i].theta) )
-            new_pos_y = prev_system_arr[i].Y + ( circ_traj_radius*math.sin(prev_system_arr[i].theta-(.00075/2)) - circ_traj_radius*math.sin(prev_system_arr[i].theta) )
+            new_pos_x = prev_system_arr[i].X + ( circ_traj_radius*math.cos(prev_system_arr[i].theta-(.00075*_time_step)) - circ_traj_radius*math.cos(prev_system_arr[i].theta) )
+            new_pos_y = prev_system_arr[i].Y + ( circ_traj_radius*math.sin(prev_system_arr[i].theta-(.00075*_time_step)) - circ_traj_radius*math.sin(prev_system_arr[i].theta) )
 
-            new_theta = (prev_system_arr[i].theta - (.00075/2)) % (2*math.pi)
+            new_theta = (prev_system_arr[i].theta - (.00075*_time_step)) % (2*math.pi)
             if (new_theta < 0) :
                 new_theta = (2*math.pi) + new_theta
 
@@ -349,7 +368,7 @@ def dispersion_stopping_condition(robotarr):
 
 
 
-def aggregation(_N, _T, _init, _noise, _stopping, _savehistory, _seed):
+def aggregation(_N, _T, _init, _noise, _time_step, _stopping, _savehistory, _seed):
     # start_time = datetime.datetime.now()
 
 
@@ -357,6 +376,8 @@ def aggregation(_N, _T, _init, _noise, _stopping, _savehistory, _seed):
         init_config = init_sys_random(_N, _seed)
     elif _init is 'symmetric':
         init_config = init_sys_symmetric(_N)
+    elif _init is 'custom':
+        init_config = init_sys_custom()
     else:
         assert False, 'ERROR: Unrecognized initialization method: ' + _init
 
@@ -364,23 +385,24 @@ def aggregation(_N, _T, _init, _noise, _stopping, _savehistory, _seed):
         step = 1
         curr_step = init_config
         step += 1
-        while (step < 300 * 2*1000):
+        while (step < 300 * (1/_time_step)*1000):
             if (_noise[0] == 'errorprob'):
-                curr_step = update_system(curr_step, True, _noise[1], _T, _seed)
+                curr_step = update_system(curr_step, True, _noise[1], _T, _time_step, _seed)
             elif (_noise[0] == 'motion'):
-                curr_step = update_system(curr_step, False, 0, _T, _seed)
+                curr_step = update_system(curr_step, False, 0, _T, _time_step, _seed)
                 motion_noise(curr_step, _noise[1], _seed)
             else:
                 assert False, 'ERROR: Unrecognized interaction rule ' + _noise[0]
-            collision_control(curr_step)
-            elastic_poten_and_motion_to_kinetic(curr_step)
+            collision_control(curr_step, _time_step)
+            elastic_poten_and_motion_to_kinetic(curr_step, _time_step)
             clear_forces(curr_step)
-            if (step % (1 * 1000*2) == 0):
+            if (step % (.5 * 1000*(1/_time_step)) == 0):
                 stopping = dispersion_stopping_condition(curr_step)
                 if (stopping[0] == True):
                     break
             step += 1
         # print(step)
+        # print(stopping[1])
         # print(datetime.datetime.now() - start_time)
         return step
     else :   # _savehistory == True
@@ -388,18 +410,18 @@ def aggregation(_N, _T, _init, _noise, _stopping, _savehistory, _seed):
             history = []
             history.append(init_config)
             step = 1
-            while (step < 300 * 2*1000):
+            while (step < 300 * (1/_time_step)*1000):
                 if (_noise[0] == 'errorprob'):
-                    history.append( update_system(history[step-1], True, _noise[1], _T, _seed) )
+                    history.append( update_system(history[step-1], True, _noise[1], _T, _time_step, _seed) )
                 elif (_noise[0] == 'motion'):
-                    history.append( update_system(history[step-1], False, 0, _T, _seed) )
+                    history.append( update_system(history[step-1], False, 0, _T, _time_step, _seed) )
                     motion_noise(history[step], _noise[1], _seed)
                 else:
                     assert False, 'ERROR: Unrecognized interaction rule ' + _noise[0]
-                collision_control(history[step])
-                elastic_poten_and_motion_to_kinetic(history[step])
+                collision_control(history[step], _time_step)
+                elastic_poten_and_motion_to_kinetic(history[step], _time_step)
                 clear_forces(history[step])
-                if (step % (1 * 1000*2) == 0):
+                if (step % (1 * 1000*(1/_time_step)) == 0):
                     stopping = dispersion_stopping_condition(history[step])
                     if (stopping[0] == True):
                         break
@@ -411,14 +433,15 @@ def aggregation(_N, _T, _init, _noise, _stopping, _savehistory, _seed):
             history.append(init_config)
             for step in range(1, _stopping[1]):
                 if (_noise[0] == 'errorprob'):
-                    history.append( update_system(history[step-1], True, _noise[1], _T, _seed) )
+                    history.append( update_system(history[step-1], True, _noise[1], _T, _time_step, _seed) )
                 elif (_noise[0] == 'motion'):
-                    history.append( update_system(history[step-1], False, 0, _T, _seed) )
+                    history.append( update_system(history[step-1], False, 0, _T, _time_step, _seed) )
                     motion_noise(history[step], _noise[1], _seed)
                 else:
                     assert False, 'ERROR: Unrecognized interaction rule ' + _noise[0]
-                collision_control(history[step])
-                elastic_poten_and_motion_to_kinetic(history[step])
+                collision_control(history[step], _time_step)
+                elastic_poten_and_motion_to_kinetic(history[step], _time_step)
                 clear_forces(history[step])
             allRawData_arr = robotObjArr_to_RawDataArr(history)
+            # print(datetime.datetime.now() - start_time)
             return np.array(allRawData_arr)
