@@ -1,9 +1,14 @@
-# Project:     Swarm Aggregation
-
 import datetime
 import math
 import numpy as np
 import random
+
+
+
+
+
+
+
 
 
 
@@ -29,6 +34,16 @@ class Robot:
         # sum of all forces acting on robot resulting from "elastic collisions" and "motion noise"; x and y components separately
         self.forces_x = forces_x
         self.forces_y = forces_y
+
+
+
+
+
+def truncate(number, decimals=0):
+    if decimals == 0:
+        return math.trunc(number)
+    factor = 10.0 ** decimals
+    return math.trunc(number * factor) / factor
 
 
 
@@ -91,14 +106,18 @@ def init_sys_random(n, seed) :
 
 
 def init_sys_custom():
-    # Deadlock - rigid: one pair of paritcles and one triplet of particles (mirrors figure in paper)
-    # See data/expdeadlock_45907581_190324472155_run0_iter0animation.pkl for direct visualization
-    coords_thetas = [ [0,0, math.pi], [0,7.4, 0], [40,0, 5*math.pi/6], [40,7.4, math.pi/6], [40+(math.sqrt(7.4**2-3.7**2)),3.7, 3*math.pi/2] ]
+    # Deadlock - rigid (most basic): one pair of paritcles
+    # See data/expdeadlock_seed_datetime_run0_iter0animation.pkl for direct visualization
+    coords_thetas = [ [0,0, math.pi], [0,7.4, 0] ]
 
-    # Deadlock - "natural": two individually aggregated yet separated clusters
-    # See data/expdeadlock_987342234_203227346276_run0_iter0animation.pkl for direct visualization
-    coords_thetas = [ [0,0, math.pi/2], [7.4,0, math.pi], [14.8,0, 0], [22.2,0, 3*math.pi/2],   [3.7,math.sqrt(7.4**2-3.7**2), math.pi/4], [11.1,math.sqrt(7.4**2-3.7**2), 0], [18.5,math.sqrt(7.4**2-3.7**2), 7*math.pi/4],   [3.7,-1*math.sqrt(7.4**2-3.7**2), 3*math.pi/4], [11.1,-1*math.sqrt(7.4**2-3.7**2), math.pi], [18.5,-1*math.sqrt(7.4**2-3.7**2), 5*math.pi/4],
-                      [100,-35, math.pi/2], [100+7.4,-35, math.pi], [100+14.8,-35, 3*math.pi/2],   [100+3.7,-35+math.sqrt(7.4**2-3.7**2), math.pi/6], [100+11.1,-35+math.sqrt(7.4**2-3.7**2), 11*math.pi/6],   [100+3.7,-35-math.sqrt(7.4**2-3.7**2), 5*math.pi/6], [100+11.1,-35-math.sqrt(7.4**2-3.7**2), 7*math.pi/6] ]
+    # # Deadlock - rigid: one pair of paritcles and one triplet of particles (mirrors figure in paper)
+    # # See data/expdeadlock_45907581_190324472155_run0_iter0animation.pkl for direct visualization
+    # coords_thetas = [ [0,0, math.pi], [0,7.4, 0], [40,0, 5*math.pi/6], [40,7.4, math.pi/6], [40+(math.sqrt(7.4**2-3.7**2)),3.7, 3*math.pi/2] ]
+
+    # # Deadlock - "natural": two individually aggregated yet separated clusters
+    # # See data/expdeadlock_987342234_203227346276_run0_iter0animation.pkl for direct visualization
+    # coords_thetas = [ [0,0, math.pi/2], [7.4,0, math.pi], [14.8,0, 0], [22.2,0, 3*math.pi/2],   [3.7,math.sqrt(7.4**2-3.7**2), math.pi/4], [11.1,math.sqrt(7.4**2-3.7**2), 0], [18.5,math.sqrt(7.4**2-3.7**2), 7*math.pi/4],   [3.7,-1*math.sqrt(7.4**2-3.7**2), 3*math.pi/4], [11.1,-1*math.sqrt(7.4**2-3.7**2), math.pi], [18.5,-1*math.sqrt(7.4**2-3.7**2), 5*math.pi/4],
+    #                   [100,-35, math.pi/2], [100+7.4,-35, math.pi], [100+14.8,-35, 3*math.pi/2],   [100+3.7,-35+math.sqrt(7.4**2-3.7**2), math.pi/6], [100+11.1,-35+math.sqrt(7.4**2-3.7**2), 11*math.pi/6],   [100+3.7,-35-math.sqrt(7.4**2-3.7**2), 5*math.pi/6], [100+11.1,-35-math.sqrt(7.4**2-3.7**2), 7*math.pi/6] ]
 
     robot_array = []
     for i in range(len(coords_thetas)):
@@ -110,17 +129,44 @@ def init_sys_custom():
 
 
 
+
+
+
+
+
 def collision_control(arr, time_step) :
     # spring_constant = 3090
     # spring_constant = 100
     # spring_constant = 16.5
+
     spring_constant = 21964 / (28.9 * (time_step**2))
 
+    # overlap_tmp = 7.4 - math.sqrt( ( 7.4-28.9*math.sin(.00075*time_step) )**2 + ( 28.9*(math.cos(-.00075*time_step)-1) )**2 )
+    # theta_tmp = math.atan( (-7.4-28.9*math.sin(-.00075*time_step)) / (28.9-28.9*math.cos(-.00075*time_step)) )
+    # spring_constant = abs( (21964*math.sin(.00075*time_step)) / (time_step**2 * math.sin(theta_tmp) * overlap_tmp) )
+
+    # spring_constant_2 = (21964*(math.cos(math.pi-.00075*time_step)+1)) / (time_step**2 * math.cos(theta_tmp) * overlap_tmp)
+    # print(spring_constant)
+    # print(spring_constant_2)
+
+    # spring_constant = (21964*math.sin(math.pi/4-.00075*time_step)-21964) / (time_step**2 * math.sin(theta_tmp) * overlap_tmp)
+    # print(spring_constant)
+
+
+
     for a in range(len(arr)):
-        for b in range(len(arr)):
+        for b in range(a+1, len(arr)):
             if(dist(arr[a], arr[b]) > 0 and dist(arr[a], arr[b]) < 7.4):
                 spring_force = spring_constant * ( (2*arr[a].robot_radius) - (dist(arr[a], arr[b])) )
-                theta = math.atan( (arr[b].Y-arr[a].Y) / (arr[b].X-arr[a].X) )
+
+                if (arr[b].X-arr[a].X == 0):
+                    if (arr[b].Y > arr[a].Y):
+                        theta = math.pi/2
+                    else:
+                        theta = 3*math.pi/2
+                else:
+                    theta = math.atan( (arr[b].Y-arr[a].Y) / (arr[b].X-arr[a].X) )
+
                 x_compon_force = spring_force * math.cos(theta)
                 y_compon_force = spring_force * math.sin(theta)
 
@@ -147,6 +193,12 @@ def collision_control(arr, time_step) :
 
                 arr[a].forces_x += x_compon_force
                 arr[a].forces_y += y_compon_force
+                arr[b].forces_x += (-1)*x_compon_force
+                arr[b].forces_y += (-1)*y_compon_force
+
+
+
+
 
 
 
@@ -161,6 +213,7 @@ def motion_noise(robot_array, max_force, seed):
         direction = 2*math.pi * rng.random()
         robot_array[i].forces_x += motion_force * math.cos(direction)
         robot_array[i].forces_y += motion_force * math.sin(direction)
+
 
 
 
@@ -370,7 +423,6 @@ def dispersion_stopping_condition(robotarr):
 
 def aggregation(_N, _T, _init, _noise, _time_step, _stopping, _savehistory, _seed):
     # start_time = datetime.datetime.now()
-
 
     if _init is 'random':
         init_config = init_sys_random(_N, _seed)

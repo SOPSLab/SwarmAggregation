@@ -1,6 +1,6 @@
 # Project:     Swarm Aggregation
 # Filename:    aggregation_continuous_experiments.py
-# Authors:     Noble C. Harasha (nharasha1202@gmail.com)
+# Authors:     Joshua J. Daymude (jdaymude@asu.edu) and Noble C. Harasha (nharasha1202@gmail.com)
 
 """
 experiments: A framework for defining and running experiments using the swarm
@@ -50,6 +50,12 @@ def isInsideCircle(circle, point):
     return distArrs(circle.C, point) <= circle.R
 
 def circleFromThree(a, b, c):
+    slopeAB = 0.0
+    slopeBC = 0.0
+    L1slope = 0.0
+    L2slope = 0.0
+    centerX = 0.0
+    centerY = 0.0
     mpAB = [ (a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0 ]
     mpBC = [ (b[0] + c[0]) / 2.0, (b[1] + c[1]) / 2.0 ]
     if (a[0] == b[0] and b[1] == c[1]):
@@ -116,7 +122,10 @@ def minCircleTrivial(points):
     return circleFromThree(points[0], points[1], points[2])
 
 def swapListElemPositions(list, pos1, pos2):
-    list[pos1], list[pos2] = list[pos2], list[pos1]
+    # list[pos1], list[pos2] = list[pos2], list[pos1]
+    tmp1 = list[pos1]
+    list[pos1] = list[pos2]
+    list[pos2] = tmp1
     return list
 
 def welzlHelper(points, boundaryPoints, numLeftToProcess):
@@ -232,7 +241,7 @@ class Experiment(object):
 
         # For each parameter combination, do iterated runs of aggregation.
         for i, param in enumerate(tqdm(self.params, desc='Simulating runs')):
-            # run_seeds = rng.integers(0, 2**32, size=self.iters)
+            # run_seeds = rng.integers(0, 2**32, size=self.iters)   # GET RID OF; JUST FOR TESTS
             N, S, T, noise_p, time_step = param
             for seed in tqdm(run_seeds, desc='Iterating run'):
                 run_data = aggregation(_N=N, _T=T, _init=self.init, \
@@ -398,7 +407,8 @@ class Experiment(object):
         """
         S = len(_run_configs)
         sed_vals = []
-        for step in range(S):
+        for step in range(0, S):
+            print(step)
             robot_coords = []
             for robot in range(len(_run_configs[step])):
                 robot_coords.append([ _run_configs[step][robot][0], _run_configs[step][robot][1] ])
@@ -534,6 +544,7 @@ class Experiment(object):
             cones = PatchCollection(sight_cones, match_original=True)
             # ims.append([ ax.add_collection(col), ax.scatter([data[0] for data in run_configs[step]], [data[1] for data in run_configs[step]], c='C0', s=54.76) ])
             ims.append([ ax.add_collection(cones), ax.add_collection(col), ax.add_collection(c) ])
+            # ims.append([ ax.add_collection(col), ax.add_collection(c) ])
 
         ani = matplotlib.animation.ArtistAnimation(fig, ims, interval=blit_frame_step, blit=True)
         ani.save('animations/' + self.fname + '_run' + str(_run) + '_iter' + str(_iter) + 'animation.mp4')
@@ -549,56 +560,39 @@ class Experiment(object):
 
         time_step = self.params[_run][4]
 
-        # _metrics = ['dispersion', 'convex_hull', 'smallest_enclosing_disc_circum', 'cluster_fraction']
-        # _metrics = ['dispersion', 'convex_hull', 'cluster_fraction']
-        _metrics = ['dispersion']
+        # _metrics = ['dispersion', 'convex_hull', 'cluster_fraction', 'smallest_enclosing_disc_circum']
+        _metrics = ['smallest_enclosing_disc_circum']
 
         for i in range(len(_metrics)):
             fig, ax = plt.subplots()
             if _metrics[i] == 'dispersion':
                 y = self.dispersion(run_configs)
                 metric_str_name = 'Dispersion'
+                metric_abs_min = 2603.1517
             elif _metrics[i] == 'convex_hull':
                 y = self.convex_hull(run_configs)
                 metric_str_name = 'Convex Hull Perim.'
+                metric_abs_min = (30 + math.sqrt(3)) * 2*3.7
             elif _metrics[i] == 'smallest_enclosing_disc_circum':
                 y = self.smallest_enclosing_disc_circum(run_configs)
                 metric_str_name = 'Smallest Enclosing Disc Circumf.'
+                metric_abs_min = math.pi * 6*math.sqrt(3)  * 2*3.7
             else:   # _metrics[i] == 'cluster_fraction'
                 y = self.cluster_fraction(run_configs)
                 metric_str_name = 'Cluster Fraction'
-            ax.plot(np.arange(0, time_step*len(y)/1000, time_step/1000), y, color='C0')
-            ax.set(xlabel='Time (sec)', ylabel=metric_str_name)
+                metric_abs_min = 1.0
+            ax.plot(np.arange(0, time_step*len(y)/1000 , time_step/1000 ), y, color='C0', zorder=4)
+            ax.plot(np.arange(0, time_step*len(y)/1000 , time_step/1000 ), np.full(len(y), metric_abs_min), color='#000000', linestyle='dashed', zorder=3)
+            ax.set(xlabel='Time (Seconds)', ylabel=metric_str_name)
             ax.grid()
             plt.tight_layout()
+
+            plt.gca().set_ylim(bottom=0)
+            plt.gca().set_xlim(left=0)
+
             fig.savefig('figs/' + self.fname + '_' + _metrics[i] + '_run' + str(_run) + '_iter' + str(_iter) + '.png', dpi=300)
             plt.close()
-
-
-
-
-
-    def plot_expsymm(self, _run, _iter):
-        tqdm.write('Plotting metrics over time...')
-
-        run_configs = self.runs_data[_run][_iter]
-        fig, ax = plt.subplots()
-        y = self.dispersion(run_configs)
-
-
-        abs_min=y[0]
-        for i in range(len(y)):
-            if(y[i]<abs_min):
-                abs_min=y[i]
-        print(abs_min)
-
-
-        ax.plot(np.arange(0, len(y)/2000, 1/2000), y)
-        ax.set(xlabel='Time (sec)', ylabel='Dispersion')
-        ax.grid()
-        plt.tight_layout()
-        fig.savefig('figs/' + self.fname + '_symm_dispersion.png', dpi=300)
-        plt.close()
+            print(metric_str_name + " done.")
 
 
 
@@ -644,33 +638,59 @@ class Experiment(object):
             if (params[run][0] == 10) :
                 new_row = []
                 for iter in range(self.iters):
-                    new_row.append(self.runs_data[run][iter]/2000)
+                    new_row.append(self.runs_data[run][iter]/100)
                 ten_data.append(new_row)
             if (params[run][0] == 25) :
                 new_row = []
                 for iter in range(self.iters):
-                    new_row.append(self.runs_data[run][iter]/2000)
+                    new_row.append(self.runs_data[run][iter]/100)
                 twenfi_data.append(new_row)
             elif (params[run][0] == 50) :
                 new_row = []
                 for iter in range(self.iters):
-                    new_row.append(self.runs_data[run][iter]/2000)
+                    new_row.append(self.runs_data[run][iter]/100)
                 fifty_data.append(new_row)
             elif (params[run][0] == 100) :
                 new_row = []
                 for iter in range(self.iters):
-                    new_row.append(self.runs_data[run][iter]/2000)
+                    new_row.append(self.runs_data[run][iter]/100)
                 onehund_data.append(new_row)
+
+        scatter_ten_data = []
+        scatter_x_ten = []
+        for run in range(len(ten_data)):
+            x = 0.0 + run*.0005
+            # x = 0.0 + run*.0025
+            for iter in range(len(ten_data[run])):
+                scatter_ten_data.append(ten_data[run][iter])
+                scatter_x_ten.append(x)
 
         scatter_twenfi_data = []
         scatter_x_twenfi = []
         for run in range(len(twenfi_data)):
-            x = 0.0 + run*.0025
+            x = 0.0 + run*.0005
             for iter in range(len(twenfi_data[run])):
                 scatter_twenfi_data.append(twenfi_data[run][iter])
                 scatter_x_twenfi.append(x)
 
-        x = [0.0 + (i*.0025) for i in range(len(twenfi_data))]
+        scatter_fifty_data = []
+        scatter_x_fifty = []
+        for run in range(len(fifty_data)):
+            x = 0.0 + run*.0005
+            for iter in range(len(fifty_data[run])):
+                scatter_fifty_data.append(fifty_data[run][iter])
+                scatter_x_fifty.append(x)
+
+        scatter_onehund_data = []
+        scatter_x_onehund = []
+        for run in range(len(onehund_data)):
+            x = 0.0 + run*.0005
+            for iter in range(len(onehund_data[run])):
+                scatter_onehund_data.append(onehund_data[run][iter])
+                scatter_x_onehund.append(x)
+
+
+        x = [0.0 + (i*.0005) for i in range(len(ten_data))]
 
         ten_data = aggregate_stats(ten_data)
         twenfi_data = aggregate_stats(twenfi_data)
@@ -679,28 +699,32 @@ class Experiment(object):
 
         # cmap = np.vectorize(lambda x : cm.plasma(x))
         # colors = np.array(cmap(np.linspace(0.0, 1.0, num=4)))
-        plasma = cm.get_cmap('plasma')
-        colors = plasma(np.linspace(0,1,4))
+        # plasma = cm.get_cmap('plasma')
+        plasma = cm.get_cmap('inferno')
+        colors = plasma(np.linspace(0,1,6))
 
         fig,ax = plt.subplots()
 
         ax.plot(x, np.full(len(x), 300), color='#000000', linestyle='dashed', alpha=0.6, zorder=2)
 
-        # ax.plot(x, ten_data['ave'], color=colors[0], label='10 robots')
-        # plot_errortube(ax, x, ten_data['ave'], ten_data['stddev'], to_hex(colors[0]))
+        ax.plot(x, ten_data['ave'], color=colors[1], label='10 robots', zorder=7, linewidth=2)
+        ax.scatter(scatter_x_ten, scatter_ten_data, color=colors[1], alpha=0.5, zorder=3)
 
-        ax.plot(x, twenfi_data['ave'], color=colors[0], label='25 robots', zorder=4, linewidth=2)
-        ax.scatter(scatter_x_twenfi, scatter_twenfi_data, color=colors[0], alpha=0.5, zorder=3)
+        ax.plot(x, twenfi_data['ave'], color=colors[2], label='25 robots', zorder=8, linewidth=2)
+        ax.scatter(scatter_x_twenfi, scatter_twenfi_data, color=colors[2], alpha=0.5, zorder=4)
 
-        # ax.plot(x, fifty_data['ave'], color=colors[2], label='50 robots')
-        # plot_errortube(ax, x, fifty_data['ave'], fifty_data['stddev'], to_hex(colors[2]))
-        #
-        # ax.plot(x, onehund_data['ave'], color=colors[3], label='100 robots')
-        # plot_errortube(ax, x, onehund_data['ave'], onehund_data['stddev'], to_hex(colors[3]))
+        ax.plot(x, fifty_data['ave'], color=colors[3], label='50 robots', zorder=9, linewidth=2)
+        ax.scatter(scatter_x_fifty, scatter_fifty_data, color=colors[3], alpha=0.5, zorder=5)
+
+        ax.plot(x, onehund_data['ave'], color=colors[4], label='100 robots', zorder=10, linewidth=2)
+        ax.scatter(scatter_x_onehund, scatter_onehund_data, color=colors[4], alpha=0.5, zorder=6)
 
         ax.set(title='Effect of Error Probability Noise on Runtime', xlabel='Error Probability', ylabel='Runtime (Seconds)')
-        ax.legend(loc='lower right')
+        # ax.legend(loc='upper left')
+        ax.legend(loc="upper left").set_zorder(100)
         ax.grid()
+
+        # plt.ylim((0, 20))
 
 
         fig.savefig('figs/' + self.fname + '_scatter.png', dpi=300)
@@ -750,63 +774,92 @@ class Experiment(object):
             if (params[run][0] == 10) :
                 new_row = []
                 for iter in range(self.iters):
-                    new_row.append(self.runs_data[run][iter]/2000)
+                    new_row.append(self.runs_data[run][iter]/100)
                 ten_data.append(new_row)
             if (params[run][0] == 25) :
                 new_row = []
                 for iter in range(self.iters):
-                    new_row.append(self.runs_data[run][iter]/2000)
+                    new_row.append(self.runs_data[run][iter]/100)
                 twenfi_data.append(new_row)
             elif (params[run][0] == 50) :
                 new_row = []
                 for iter in range(self.iters):
-                    new_row.append(self.runs_data[run][iter]/2000)
+                    new_row.append(self.runs_data[run][iter]/100)
                 fifty_data.append(new_row)
             elif (params[run][0] == 100) :
                 new_row = []
                 for iter in range(self.iters):
-                    new_row.append(self.runs_data[run][iter]/2000)
+                    new_row.append(self.runs_data[run][iter]/100)
                 onehund_data.append(new_row)
-
 
         scatter_ten_data = []
         scatter_x_ten = []
         for run in range(len(ten_data)):
-            x = 0.0 + run*.25
+            x = 0.0 + run*.0125
             for iter in range(len(ten_data[run])):
                 scatter_ten_data.append(ten_data[run][iter])
                 scatter_x_ten.append(x)
 
-        x = [0.0 + (i*.25) for i in range(len(ten_data))]
+        scatter_twenfi_data = []
+        scatter_x_twenfi = []
+        for run in range(len(twenfi_data)):
+            x = 0.0 + run*.0125
+            for iter in range(len(twenfi_data[run])):
+                scatter_twenfi_data.append(twenfi_data[run][iter])
+                scatter_x_twenfi.append(x)
+
+        scatter_fifty_data = []
+        scatter_x_fifty = []
+        for run in range(len(fifty_data)):
+            x = 0.0 + run*.0125
+            for iter in range(len(fifty_data[run])):
+                scatter_fifty_data.append(fifty_data[run][iter])
+                scatter_x_fifty.append(x)
+
+        scatter_onehund_data = []
+        scatter_x_onehund = []
+        for run in range(len(onehund_data)):
+            x = 0.0 + run*.0125
+            for iter in range(len(onehund_data[run])):
+                scatter_onehund_data.append(onehund_data[run][iter])
+                scatter_x_onehund.append(x)
+
+
+        x = [0.0 + (i*.0125) for i in range(len(ten_data))]
 
         ten_data = aggregate_stats(ten_data)
         twenfi_data = aggregate_stats(twenfi_data)
         fifty_data = aggregate_stats(fifty_data)
         onehund_data = aggregate_stats(onehund_data)
 
-        plasma = cm.get_cmap('plasma')
-        colors = plasma(np.linspace(0,1,4))
+        # cmap = np.vectorize(lambda x : cm.plasma(x))
+        # colors = np.array(cmap(np.linspace(0.0, 1.0, num=4)))
+        # plasma = cm.get_cmap('plasma')
+        plasma = cm.get_cmap('inferno')
+        colors = plasma(np.linspace(0,1,6))
 
         fig,ax = plt.subplots()
 
-
         ax.plot(x, np.full(len(x), 300), color='#000000', linestyle='dashed', alpha=0.6, zorder=2)
 
-        ax.plot(x, ten_data['ave'], color=colors[0], label='10 robots', zorder=4, linewidth=2)
-        ax.scatter(scatter_x_ten, scatter_ten_data, color=colors[0], alpha=0.5, zorder=3)
+        ax.plot(x, ten_data['ave'], color=colors[1], label='10 robots', zorder=7, linewidth=2)
+        ax.scatter(scatter_x_ten, scatter_ten_data, color=colors[1], alpha=0.5, zorder=3)
 
-        # ax.plot(x, twenfi_data['ave'], color=colors[1], label='25 robots')
-        # plot_errortube(ax, x, twenfi_data['ave'], twenfi_data['stddev'], to_hex(colors[1]))
-        #
-        # ax.plot(x, fifty_data['ave'], color=colors[2], label='50 robots')
-        # plot_errortube(ax, x, fifty_data['ave'], fifty_data['stddev'], to_hex(colors[2]))
-        #
-        # ax.plot(x, onehund_data['ave'], color=colors[3], label='100 robots')
-        # plot_errortube(ax, x, onehund_data['ave'], onehund_data['stddev'], to_hex(colors[3]))
+        ax.plot(x, twenfi_data['ave'], color=colors[2], label='25 robots', zorder=8, linewidth=2)
+        ax.scatter(scatter_x_twenfi, scatter_twenfi_data, color=colors[2], alpha=0.5, zorder=4)
 
-        ax.set(title='Effect of Motion Noise on Runtime', xlabel='Maximum Motion Noise Force (N)', ylabel='Runtime (Seconds)')
-        ax.legend(loc='lower right')
+        ax.plot(x, fifty_data['ave'], color=colors[3], label='50 robots', zorder=9, linewidth=2)
+        ax.scatter(scatter_x_fifty, scatter_fifty_data, color=colors[3], alpha=0.5, zorder=5)
+
+        ax.plot(x, onehund_data['ave'], color=colors[4], label='100 robots', zorder=10, linewidth=2)
+        ax.scatter(scatter_x_onehund, scatter_onehund_data, color=colors[4], alpha=0.5, zorder=6)
+
+        ax.set(title='Effect of Motion Noise on Runtime', xlabel='Maximum Motion Noise Force Applied (N)', ylabel='Runtime (Seconds)')
+        # ax.legend(loc='upper left')
+        ax.legend(loc="upper left").set_zorder(100)
         ax.grid()
+
+        plt.xlim((-0.015,0.42))
 
 
         fig.savefig('figs/' + self.fname + '_scatter.png', dpi=300)
@@ -817,7 +870,7 @@ class Experiment(object):
 
 
 
-    def plot_expsymm2(self):
+    def plot_expsymm(self):
         tqdm.write('Plotting metrics over time...')
 
         three_robots = self.dispersion(self.runs_data[0][0])
@@ -825,22 +878,24 @@ class Experiment(object):
         five_robots = self.dispersion(self.runs_data[1][0])
         ten_robots = self.dispersion(self.runs_data[2][0])
 
-        plasma = cm.get_cmap('plasma')
-        colors = plasma(np.linspace(0,1,4))
+        time_step = self.params[0][4]
+
+        plasma = cm.get_cmap('inferno')
+        colors = plasma(np.linspace(0,1,5))
 
         fig,ax = plt.subplots()
 
-        ax.plot(np.arange(0, len(three_robots)/2000, 1/2000), three_robots, color=colors[0], label='3 robots')
-        ax.plot(np.arange(0, len(three_robots)/2000, 1/2000), np.full(len(three_robots), 12.817176), color=colors[0], linestyle='dashed')
+        ax.plot(np.arange(0, time_step*len(three_robots)/1000, time_step/1000), three_robots, color=colors[1], label='3 robots', zorder=7)
+        ax.plot(np.arange(0, time_step*len(three_robots)/1000, time_step/1000), np.full(len(three_robots), 12.817176), color=colors[1], linestyle='dashed', zorder=4)
 
-        ax.plot(np.arange(0, len(five_robots)/2000, 1/2000), five_robots, color=colors[1], label='5 robots')
-        ax.plot(np.arange(0, len(five_robots)/2000, 1/2000), np.full(len(five_robots), 28.8987147321), color=colors[1], linestyle='dashed')
+        ax.plot(np.arange(0, time_step*len(five_robots)/1000, time_step/1000), five_robots, color=colors[2], label='5 robots',zorder=6)
+        ax.plot(np.arange(0, time_step*len(five_robots)/1000, time_step/1000), np.full(len(five_robots), 28.8987147321), color=colors[2], linestyle='dashed', zorder=3)
 
-        ax.plot(np.arange(0, len(ten_robots)/2000, 1/2000), ten_robots, color=colors[2], label='10 robots')
-        ax.plot(np.arange(0, len(ten_robots)/2000, 1/2000), np.full(len(ten_robots), 81.57429538), color=colors[2], linestyle='dashed')
+        ax.plot(np.arange(0, time_step*len(ten_robots)/1000, time_step/1000), ten_robots, color=colors[3], label='10 robots', zorder=5)
+        ax.plot(np.arange(0, time_step*len(ten_robots)/1000, time_step/1000), np.full(len(ten_robots), 81.57429538), color=colors[3], linestyle='dashed', zorder=2)
 
-        ax.set(title='Symmetric Initial Configurations', xlabel='Time (sec)', ylabel='Dispersion')
-        ax.legend(loc='upper right')
+        ax.set(title='Symmetric Initial Configurations', xlabel='Time (Seconds)', ylabel='Dispersion')
+        ax.legend(loc='upper right').set_zorder(100)
         ax.grid()
         plt.tight_layout()
         fig.savefig('figs/' + self.fname + '_symm_dispersion.png', dpi=300)
@@ -851,176 +906,137 @@ class Experiment(object):
 
 
 
+    # Cone of sight sensor size
+    def plot_exp2(self):
+        print('Plotting metrics over time...')
+
+        from operator import add
+        from operator import sub
+
+        def aggregate_stats(data):
+            """
+            Calculates the average and standard deviation of data by row.
+            Inputs:  A list of lists where each row represents data for a different value of the independent variable and each column represents values obtained from repeated experiment runs.
+            Returns: A dictionary of two lists, one representing each row's average and the other representing its standard deviation.
+            """
+            return {'ave' : [stats.mean(row) for row in data], \
+                    'stddev' : [stats.pstdev(row) for row in data]}
+
+        def plot_errortube(ax, x, y, yerr, color):
+            """
+            Plots a translucent error tube centered at y with error sizes yerr with the
+            specified color.
+            Inputs:  pyplot axes to draw on, lists of x and y coordinates, a list of
+                     error magnitudes at each x coordinate, and a hex color to draw the
+                     error tube in.
+            Returns: None.
+            """
+            errs_lower = list(map(sub, y, yerr))
+            errs_upper = list(map(add, y, yerr))
+            ax.fill_between(x, errs_lower, errs_upper, alpha=-0.5, facecolor=color)
 
 
-# Load data - noise
-def plot_load_noise(runtimes, filename):
-    print('Plotting metrics over time...')
+        params = np.copy(self.params)
+        ten_data = []
+        twenfi_data = []
+        fifty_data = []
+        onehund_data = []
 
-    from operator import add
-    from operator import sub
+        for run in range(len(params)):
+            if (params[run][0] == 10) :
+                new_row = []
+                for iter in range(self.iters):
+                    new_row.append(self.runs_data[run][iter]/100)
+                ten_data.append(new_row)
+            if (params[run][0] == 25) :
+                new_row = []
+                for iter in range(self.iters):
+                    new_row.append(self.runs_data[run][iter]/100)
+                twenfi_data.append(new_row)
+            elif (params[run][0] == 50) :
+                new_row = []
+                for iter in range(self.iters):
+                    new_row.append(self.runs_data[run][iter]/100)
+                fifty_data.append(new_row)
+            elif (params[run][0] == 100) :
+                new_row = []
+                for iter in range(self.iters):
+                    new_row.append(self.runs_data[run][iter]/100)
+                onehund_data.append(new_row)
 
-    def aggregate_stats(data):
-        """
-        Calculates the average and standard deviation of data by row.
-        Inputs:  A list of lists where each row represents data for a different value of the independent variable and each column represents values obtained from repeated experiment runs.
-        Returns: A dictionary of two lists, one representing each row's average and the other representing its standard deviation.
-        """
-        return {'ave' : [stats.mean(row) for row in data], \
-                'stddev' : [stats.pstdev(row) for row in data]}
+        scatter_ten_data = []
+        scatter_x_ten = []
+        for run in range(len(ten_data)):
+            x = 0.0 + run*(math.pi/36)
+            for iter in range(len(ten_data[run])):
+                scatter_ten_data.append(ten_data[run][iter])
+                scatter_x_ten.append(x)
 
-    def plot_errortube(ax, x, y, yerr, color):
-        """
-        Plots a translucent error tube centered at y with error sizes yerr with the
-        specified color.
-        Inputs:  pyplot axes to draw on, lists of x and y coordinates, a list of
-                 error magnitudes at each x coordinate, and a hex color to draw the
-                 error tube in.
-        Returns: None.
-        """
-        errs_lower = list(map(sub, y, yerr))
-        errs_upper = list(map(add, y, yerr))
-        ax.fill_between(x, errs_lower, errs_upper, alpha=-0.5, facecolor=color)
+        scatter_twenfi_data = []
+        scatter_x_twenfi = []
+        for run in range(len(twenfi_data)):
+            x = 0.0 + run*(math.pi/36)
+            for iter in range(len(twenfi_data[run])):
+                scatter_twenfi_data.append(twenfi_data[run][iter])
+                scatter_x_twenfi.append(x)
 
+        scatter_fifty_data = []
+        scatter_x_fifty = []
+        for run in range(len(fifty_data)):
+            x = 0.0 + run*(math.pi/36)
+            for iter in range(len(fifty_data[run])):
+                scatter_fifty_data.append(fifty_data[run][iter])
+                scatter_x_fifty.append(x)
 
-    ten_data = []
-    for run in range(len(runtimes[0])):
-        new_row = []
-        for iter in range(len(runtimes[0][run])):
-            new_row.append(runtimes[0][run][iter]/2000)
-        ten_data.append(new_row)
-
-    twenfi_data = []
-    for run in range(len(runtimes[1])):
-        new_row = []
-        for iter in range(len(runtimes[1][run])):
-            new_row.append(runtimes[1][run][iter]/2000)
-        twenfi_data.append(new_row)
-
-    x = [0.0 + (i*(math.pi/24)) for i in range(len(ten_data))]
-
-    ten_data = aggregate_stats(ten_data)
-    twenfi_data = aggregate_stats(twenfi_data)
-
-    plasma = cm.get_cmap('plasma')
-    colors = plasma(np.linspace(0,1,4))
-
-    fig,ax = plt.subplots()
-
-    ax.plot(x, ten_data['ave'], color=colors[0], label='10 robots')
-    plot_errortube(ax, x, ten_data['ave'], ten_data['stddev'], to_hex(colors[0]))
-
-    ax.plot(x, twenfi_data['ave'], color=colors[1], label='25 robots')
-    plot_errortube(ax, x, twenfi_data['ave'], twenfi_data['stddev'], to_hex(colors[1]))
-
-
-    ax.set(title='Effect of Sight Sensor Size on Runtime', xlabel='Cone-of-sight Sensor Size (rad)', ylabel='Runtime (Seconds)')
-    ax.legend(loc='upper right')
-    ax.grid()
+        scatter_onehund_data = []
+        scatter_x_onehund = []
+        for run in range(len(onehund_data)):
+            x = 0.0 + run*(math.pi/36)
+            for iter in range(len(onehund_data[run])):
+                scatter_onehund_data.append(onehund_data[run][iter])
+                scatter_x_onehund.append(x)
 
 
-    fig.savefig('figs/' + filename + '_sightcone.png', dpi=300)
-    plt.close()
+        x = [0.0 + (i*(math.pi/36)) for i in range(len(twenfi_data))]
+
+        ten_data = aggregate_stats(ten_data)
+        twenfi_data = aggregate_stats(twenfi_data)
+        fifty_data = aggregate_stats(fifty_data)
+        onehund_data = aggregate_stats(onehund_data)
+
+        # cmap = np.vectorize(lambda x : cm.plasma(x))
+        # colors = np.array(cmap(np.linspace(0.0, 1.0, num=4)))
+        # plasma = cm.get_cmap('plasma')
+        plasma = cm.get_cmap('inferno')
+        colors = plasma(np.linspace(0,1,6))
+
+        fig,ax = plt.subplots()
+
+        ax.plot(x, np.full(len(x), 300), color='#000000', linestyle='dashed', alpha=0.6, zorder=2)
+
+        ax.plot(x, ten_data['ave'], color=colors[1], label='10 robots', zorder=7, linewidth=2)
+        ax.scatter(scatter_x_ten, scatter_ten_data, color=colors[1], alpha=0.5, zorder=3)
+
+        ax.plot(x, twenfi_data['ave'], color=colors[2], label='25 robots', zorder=8, linewidth=2)
+        ax.scatter(scatter_x_twenfi, scatter_twenfi_data, color=colors[2], alpha=0.5, zorder=4)
+
+        ax.plot(x, fifty_data['ave'], color=colors[3], label='50 robots', zorder=9, linewidth=2)
+        ax.scatter(scatter_x_fifty, scatter_fifty_data, color=colors[3], alpha=0.5, zorder=5)
+
+        ax.plot(x, onehund_data['ave'], color=colors[4], label='100 robots', zorder=10, linewidth=2)
+        ax.scatter(scatter_x_onehund, scatter_onehund_data, color=colors[4], alpha=0.5, zorder=6)
+
+        ax.set(title='Effect of Cone of Sight Sensor Size on Runtime', xlabel='Cone of Sight Sensor Size (rads)', ylabel='Runtime (Seconds)')
+        # ax.legend(loc='upper left')
+        ax.legend(loc="upper left").set_zorder(100)
+        ax.grid()
+
+        # plt.ylim((0, 20))
 
 
+        fig.savefig('figs/' + self.fname + '_sightcone.png', dpi=300)
+        plt.close()
 
-
-
-
-
-# Load data - cone-of-sight sensor size
-def plot_sightcone(runtimes, filename):
-    print('Plotting metrics over time...')
-
-    from operator import add
-    from operator import sub
-
-    def aggregate_stats(data):
-        """
-        Calculates the average and standard deviation of data by row.
-        Inputs:  A list of lists where each row represents data for a different value of the independent variable and each column represents values obtained from repeated experiment runs.
-        Returns: A dictionary of two lists, one representing each row's average and the other representing its standard deviation.
-        """
-        return {'ave' : [stats.mean(row) for row in data], \
-                'stddev' : [stats.pstdev(row) for row in data]}
-
-    def plot_errortube(ax, x, y, yerr, color):
-        """
-        Plots a translucent error tube centered at y with error sizes yerr with the
-        specified color.
-        Inputs:  pyplot axes to draw on, lists of x and y coordinates, a list of
-                 error magnitudes at each x coordinate, and a hex color to draw the
-                 error tube in.
-        Returns: None.
-        """
-        errs_lower = list(map(sub, y, yerr))
-        errs_upper = list(map(add, y, yerr))
-        ax.fill_between(x, errs_lower, errs_upper, alpha=-0.5, facecolor=color)
-
-
-    ten_data = []
-    x_ten = []
-    for run in range(len(runtimes[0])):
-        x = 0.0 + run*(math.pi/24)
-        for iter in range(len(runtimes[0][run])):
-            ten_data.append(runtimes[0][run][iter]/2000)
-            x_ten.append(x)
-
-    twenfi_data = []
-    x_twenfi = []
-    for run in range(len(runtimes[1])):
-        x = 0.0 + run*(math.pi/24)
-        for iter in range(len(runtimes[1][run])):
-            twenfi_data.append(runtimes[1][run][iter]/2000)
-            x_twenfi.append(x)
-    for run in range(len(runtimes[2])):
-        x = 0.0 + run*(math.pi/24)
-        for iter in range(len(runtimes[2][run])):
-            twenfi_data.append(runtimes[2][run][iter]/2000)
-            x_twenfi.append(x)
-
-    main_x = []
-    ten_avg = []
-    twenfi_avg = []
-    for i in range(25):
-        main_x.append(i * (math.pi/24))
-        ten_avg.append([])
-        twenfi_avg.append([])
-
-    for i in range(len(ten_data)):
-        x = int( (x_ten[i] / math.pi * 24) + .001)
-        ten_avg[x].append(ten_data[i])
-
-    for i in range(len(twenfi_data)):
-        x = int( (x_twenfi[i] / math.pi * 24) + .001)
-        twenfi_avg[x].append(twenfi_data[i])
-
-    ten_avg = aggregate_stats(ten_avg)
-    twenfi_avg = aggregate_stats(twenfi_avg)
-
-
-    plasma = cm.get_cmap('plasma')
-    colors = plasma(np.linspace(0,1,4))
-
-    fig,ax = plt.subplots()
-
-    ax.plot(x_ten, np.full(len(x_ten), 300), color='#000000', linestyle='dashed', alpha=0.6, zorder=2)
-
-    ax.scatter(x_ten, ten_data, color=colors[0], alpha=0.4, label='10 robots', zorder=3)
-    ax.plot(main_x, ten_avg['ave'], color=colors[0], zorder=5)
-
-    ax.scatter(x_twenfi, twenfi_data, color=colors[2], alpha=0.4, label='25 robots', zorder=4)
-    ax.plot(main_x, twenfi_avg['ave'], color=colors[2], zorder=6)
-
-
-    ax.set(title='Effect of Sight Sensor Size on Runtime', xlabel='Cone-of-sight Sensor Size (rad)', ylabel='Runtime (Seconds)')
-    ax.legend(loc='upper right')
-    ax.grid()
-
-    plt.ylim((-5, 315))
-
-    fig.savefig('figs/' + filename + '_sightcone.png', dpi=300)
-    plt.close()
 
 
 
@@ -1048,36 +1064,30 @@ def load(filename):
 
 # Evidence for symmetric counterexample
 def expsymm(_seed=None):
-    params = {'N' : [3, 5, 10], 'S' : [4 * 60 * 2*1000], 'T' : [0], 'noise_p' : [0]}
-    exp = Experiment(_id='symm', _params=params, _init='symmetric', _noise='errorprob', _stopping=False, _iters=1, _seed=_seed)
+    params = {'N' : [3, 5, 10], 'S' : [4 * 60], 'T' : [0], 'noise_p' : [0], 'time_step' : [10]}
+    exp = Experiment(_id='symm', _params=params, _init='symmetric', _noise='errorprob', _stopping=False, _savehistory=True, _iters=1, _seed=_seed)
     exp.run()
     exp.save()
-    exp.plot_expsymm2()
+    exp.plot_expsymm()
     print(exp.fname)
 
 # Time evolutions
 def exp0(_seed=None):
-    params = {'N' : [100], 'S' : [300 * 2*1000], 'T' : [0], 'noise_p' : [0.00]}
+    params = {'N' : [10], 'S' : [10], 'T' : [0], 'noise_p' : [0.0], 'time_step' : [10]}
     exp = Experiment(_id='0', _params=params, _init='random', _noise='errorprob', _stopping=False, _savehistory=True, _iters=1, _seed=_seed)
     exp.run()
     exp.save()
     print(exp.fname)
     exp.plot_exp0(0, 0)
-    exp.animate(0, 0)
+    # exp.animate(0, 0)
 
 def exp_test(_seed=None):
-    params = {'N' : [100], 'S' : [0], 'T' : [0], 'noise_p' : [0,.15], 'time_step' : [10]}
-    # params = {'N' : [100], 'S' : [300], 'T' : [0], 'noise_p' : [.25,.5], 'time_step' : [10]}
-    # params = {'N' : [25, 100], 'S' : [0], 'T' : [0], 'noise_p' : [.01,.02], 'time_step' : [10]}
-    exp = Experiment(_id='test', _params=params, _init='random', _noise='motion', _stopping=True, _savehistory=False, _iters=2, _seed=_seed)
+    params = {'N' : [3], 'S' : [4 * 60], 'T' : [0], 'noise_p' : [0], 'time_step' : [10]}
+    exp = Experiment(_id='test', _params=params, _init='symmetric', _noise='errorprob', _stopping=False, _savehistory=True, _iters=1, _seed=_seed)
     exp.run()
     exp.save()
     print(exp.fname)
-    # print(exp.runs_data)
-    # exp.plot_exp0(0,0)
-    # exp = load('exptest_458736_172917691849.pkl')
-    # for run in range(len(exp.params)):
-    #     exp.animate(run,0)
+    exp.animate(0,0)
 
 
 
@@ -1085,7 +1095,8 @@ def exp_test(_seed=None):
 
 # Error probability noise
 def exp1_errorprob(_seed=None):
-    params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .02000001, .0005), 'time_step' : [10]}
+    # params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .02000001, .0005), 'time_step' : [10]}
+    params = {'N' : [10], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .075000001, .0025), 'time_step' : [10]}
     exp = Experiment(_id='1errorprob', _params=params, _init='random', _noise='errorprob', _stopping=True, _savehistory=False, _iters=10, _seed=_seed)
     exp.run()
     exp.save()
@@ -1093,8 +1104,8 @@ def exp1_errorprob(_seed=None):
 
 # 'Motion' noise
 def exp1_motion(_seed=None):
-    params = {'N' : [10, 25, 50, 100], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .50001, .0125), 'time_step' : [10]}
-    exp = Experiment(_id='1motion', _params=params, _init='random', _noise='motion', _stopping=True, _savehistory=False, _iters=10, _seed=_seed)
+    params = {'N' : [10], 'S' : [0], 'T' : [0], 'noise_p' : np.arange(0, .50001, .0125), 'time_step' : [10]}
+    exp = Experiment(_id='1motion', _params=params, _init='random', _noise='motion', _stopping=True, _savehistory=False, _iters=5, _seed=_seed)
     exp.run()
     exp.save()
     print(exp.fname)
@@ -1113,24 +1124,31 @@ def exp2(_seed=None):
 
 
 def expload(_seed=None):
-    # # filename='exp1errorprob_9123735_111435885763.pkl'
-    # data = [load('exp2_8124652312_115657246372.pkl').runs_data, load('exp2_947562543_182100626627.pkl').runs_data, load('exp2_4239751634_235948089486.pkl').runs_data]
-    # # print(data.runs_data)
-    # # print(data.params[1])
-    # plot_sightcone(data, 'exp2_8124652312_115657246372')
+    # filename1 = 'exp1motion_3121127542_083556336223.pkl'
+    # filename2 = 'exp1errorprob_3121127542_083527230637.pkl'
+    # filename3 = 'exp2_3121127542_083635149918.pkl'
 
-    exp = load('exp1errorprob_9123735_111435885763.pkl')
-    print(exp.params[1])
-    exp.plot_exp1_errorprob()
+    # filename = 'exp1errorprob_54987653497_000719718102.pkl'
+    # filename = 'exp1errorprob_876543875642_105832971936.pkl'
+    # filename = 'exp1motion_987654675943_000729442155.pkl'
+
+    filename = 'exp0_876541146542_200846670378.pkl'
+    exp = load(filename)
+    # print(exp.runs_data[0][0])
+    exp.plot_exp0(0,0)
+
+
 
 def expdeadlock(_seed=None):
-    params = {'N' : [17], 'S' : [60 * 2*1000], 'T' : [0], 'noise_p' : [0.0]}
+    params = {'N' : [2], 'S' : [2], 'T' : [0], 'noise_p' : [0.0], 'time_step' : [1]}
     exp = Experiment(_id='deadlock', _params=params, _init='custom', _noise='errorprob', _stopping=False, _savehistory=True, _iters=1, _seed=_seed)
     exp.run()
     exp.save()
     print(exp.fname)
     exp.plot_exp0(0,0)
     exp.animate(0,0)
+
+    
 
 def exptimestep(_seed=None):
     params = {'N' : [25], 'S' : [60 * 3], 'T' : [0], 'noise_p' : [0.0], 'time_step' : [1, 2, 5, 10, 50, 100]}
