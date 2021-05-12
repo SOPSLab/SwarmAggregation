@@ -389,24 +389,55 @@ def dispersion_stopping_condition(robotarr):
     for k in range(n):
         dispersion_val += distArrays([robotarr[k].X, robotarr[k].Y], centroid)
 
-    # print(dispersion_val)
 
-    if (n >= 169):
-        ideal_cluster = (1*(2*rr) * 6) + (2*(2*rr) * 12) + (3*(2*rr) * 18) + (4*(2*rr) * 24) + (5*(2*rr) * 30) + (6*(2*rr) * 36) + (7*(2*rr) * 42) + (8*(2*rr) * (n-169))
-    elif (n >= 127):
-        ideal_cluster = (1*(2*rr) * 6) + (2*(2*rr) * 12) + (3*(2*rr) * 18) + (4*(2*rr) * 24) + (5*(2*rr) * 30) + (6*(2*rr) * 36) + (7*(2*rr) * (n-127))
-    elif (n >= 91):
-        ideal_cluster = (1*(2*rr) * 6) + (2*(2*rr) * 12) + (3*(2*rr) * 18) + (4*(2*rr) * 24) + (5*(2*rr) * 30) + (6*(2*rr) * (n-91))
-    elif (n >= 61):
-        ideal_cluster = (1*(2*rr) * 6) + (2*(2*rr) * 12) + (3*(2*rr) * 18) + (4*(2*rr) * 24) + (5*(2*rr) * (n-61))
-    elif (n >= 37):
-        ideal_cluster = (1*(2*rr) * 6) + (2*(2*rr) * 12) + (3*(2*rr) * 18) + (4*(2*rr) * (n-37))
-    elif (n >= 19):
-        ideal_cluster = (1*(2*rr) * 6) + (2*(2*rr) * 12) + (3*(2*rr) * (n-19))
-    elif (n >= 7):
-        ideal_cluster = (1*(2*rr) * 6) + (2*(2*rr) * (n-7))
-    else:
-        ideal_cluster = (1*(2*rr) * (n-1))
+    points_ideal = []
+    points_ideal.append([0,0])
+    n -= 1
+    for level in range(1, 11):
+        if n <= 0:
+            break
+        level_capac = 6 * level
+        x = level
+        y = 0
+        points_ideal.append([x,y])
+        n -= 1
+        while n > 0 and y > -1*level:
+            y -= 1
+            points_ideal.append([x,y])
+            n -= 1
+        while n > 0 and x > 0:
+            x -= 1
+            points_ideal.append([x,y])
+            n -= 1
+        while n > 0 and y < 0:
+            x -= 1
+            y += 1
+            points_ideal.append([x,y])
+            n -= 1
+        while n > 0 and y < level:
+            y += 1
+            points_ideal.append([x,y])
+            n -= 1
+        while n > 0 and x < 0:
+            x += 1
+            points_ideal.append([x,y])
+            n -= 1
+        while n > 0 and y > 1:
+            x += 1
+            y -= 1
+            points_ideal.append([x,y])
+            n -= 1
+
+    x_sum = 0
+    y_sum = 0
+    for i in range(n):
+        x_sum += points_ideal[i][0]
+        y_sum += points_ideal[i][1]
+    centroid = [x_sum / n, y_sum / n]
+    ideal_cluster = 0
+    for k in range(n):
+        ideal_cluster += distArrays([robotarr[k][0], robotarr[k][1]], centroid)
+
 
     if (dispersion_val <= 1.15 * ideal_cluster):
         return (True, dispersion_val / ideal_cluster)     # TERMINATE RUN; STOPPING CONDITION MET
