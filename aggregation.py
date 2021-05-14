@@ -167,8 +167,8 @@ def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
 
     Inputs:
     - config: N x 3 array of robot position and orientation data
-    - R (float): distance from a robot's center to its center of rotation (cm)
-    - r (float): radius of a robot (cm)
+    - R (float): distance from a robot's center to its center of rotation (m)
+    - r (float): radius of a robot (m)
     - m (float): mass of a robot (kg)
     - w0 (float): rot. speed of a robot about its center of rotation (rad/s)
     - w1 (float): rot. speed of a robot in place (rad/s)
@@ -183,25 +183,23 @@ def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
     next = np.copy(config)
 
     # Compute collision forces.
-    F_collide = np.zeros(np.shape(config))
+    forces = np.zeros((len(config), 2))
     K = 21964 / (28.9 * (step**2))  # Spring constant for hard disks.
-    for i in range(len(F_collide)):
-        for j in range(i+1, len(F_collide)):
+    for i in range(len(config)):
+        for j in range(i+1, len(config)):
             # If robots i and j overlap, then apply a spring force to both.
             delta = config[i][:2] - config[j][:2]
             dist = np.linalg.norm(delta)
             if dist <= 2*r:
-                force = K * (2*r - dist)
-                F_collide[i][:2] += delta * force / dist
-                F_collide[j][:2] -= delta * force / dist
+                forces[i] += delta * K * (2*r - dist) / dist
+                forces[j] -= delta * K * (2*r - dist) / dist
 
     # Compute motion noise forces.
-    F_motion = np.zeros(np.shape(config))
     if noise[0] == 'mot':
-        for i in range(len(F_motion)):
+        for i in range(len(config)):
             force = rng.random() * noise[1]
             theta = rng.random() * 2*np.pi
-            F_motion[i][:2] = force * np.array([np.cos(theta), np.sin(theta)])
+            forces[i] += force * np.array([np.cos(theta), np.sin(theta)])
 
     # Compute translation and rotation from algorithm drive.
     for i in range(len(config)):
@@ -225,27 +223,26 @@ def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
 
     # Integrate forces and apply to the updated configuration.
     for i in range(len(config)):
-        # Note: The * 100 is needed to convert from m to cm.
-        next[i][:2] += (F_collide[i][:2] + F_motion[i][:2]) * step**2 * 100 / m
+        next[i][:2] += forces[i] * step**2 / m
 
     return next
 
 
-def aggregation(N=50, R=14.45, r=3.7, m=0.152, w0=-0.75, w1=-5.02, sensor=0, \
+def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
                 noise=('err', 0), time=60, step=0.005, stop=None, init='rand', \
                 seed=None, silent=False):
     """
     Execute an aggregation experiment.
 
     Throughout, configuration data tracks:
-    - X (float): the x-position of each robot (cm)
-    - Y (float): the y-position of each robot (cm)
+    - X (float): the x-position of each robot (m)
+    - Y (float): the y-position of each robot (m)
     - Theta (float): the orientation of each robot's sight sensor (rad)
 
     Inputs:
     - N (int): number of robots
-    - R (float): distance from a robot's center to its center of rotation (cm)
-    - r (float): radius of a robot (cm)
+    - R (float): distance from a robot's center to its center of rotation (m)
+    - r (float): radius of a robot (m)
     - m (float): mass of a robot (kg)
     - w0 (float): rot. speed of a robot about its center of rotation (rad/s)
     - w1 (float): rot. speed of a robot in place (rad/s)
