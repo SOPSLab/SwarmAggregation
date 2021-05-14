@@ -50,27 +50,48 @@ def init_symm(N, R):
     return config
 
 
-def init_dead(N, r):
-    """
-    Initialize N robots with radii r in a deadlocked configuration.
-    """
-    config = np.zeros((N, 3))
-
-    # TODO: Bring back NH's deadlock code.
-
-    return config
-
-
 def ideal(N, r):
     """
     Takes as input a number of robots N with radii r and returns the hexagonal
     packing configuration.
     """
-    config = np.zeros((N, 3))
+    # First compute the robot positions in a hexagon in triangular coordinates.
+    points_tri, layer = [[0,0]], 1
+    while len(points_tri) < N:
+        # Start a new layer at (layer, 0).
+        x, y = r * layer, 0
+        points_tri.append([x,y])
+        if len(points_tri) == N:
+            break
 
-    for i in range(1, N):
-        pass
-        # TODO: construct ideal configuration.
+        # Extend along the six segments of the layer.
+        while y > -layer and len(points_tri) < N:  # Down-left.
+            y -= r
+            points_tri.append([x,y])
+        while x > 0 and len(points_tri) < N:       # Left.
+            x -= r
+            points_tri.append([x,y])
+        while y < 0 and len(points_tri) < N:       # Up-left.
+            x -= r
+            y += r
+            points_tri.append([x,y])
+        while y < layer and len(points_tri) < N:   # Up-right.
+            y += r
+            points_tri.append([x,y])
+        while x < 0 and len(points_tri) < N:       # Right.
+            x += r
+            points_tri.append([x,y])
+        while y > 1 and len(points_tri) < N:       # Down-right.
+            x += r
+            y -= r
+            points_tri.append([x,y])
+        layer += 1
+
+    # Convert triangular coordinates into Cartesian ones.
+    config = np.zeros((N, 3))
+    for i in range(N):
+        x_tri, y_tri = points_tri[i]
+        config[i][:2] = [x_tri + (y_tri / 2), (np.sqrt(3) / 2) * y_tri]
 
     return config
 
@@ -87,78 +108,62 @@ def sense(config, i, r, sensor):
 
     Returns: True if another robot is in the sensor region; False otherwise.
     """
-    # NH's original code. TODO: understand.
     x_i, y_i, theta_i = config[i]
-    cw, ccw = theta_i + np.array([-sensor / 2, sensor / 2])
+    cw, ccw = theta_i - sensor / 2, theta_i + sensor / 2
 
-    for j in np.delete(np.arange(len(config)), i):
+    for j in np.arange(len(config)):
         x_j, y_j, _ = config[j]
 
-        # Investigate the sensor's clockwise boundary.
+        # Remove the half-plane that is "more clockwise" than the "more
+        # clockwise" line that is parallel to the clockwise boundary and tangent
+        # to robot i.
         if cw < np.pi/2 or cw > 3*np.pi/2:
-            if y_j >= np.tan(cw) * (x_j - x_i) + y_i - r / np.cos(cw):
+            if y_j < np.tan(cw) * (x_j - x_i) + y_i - r / np.cos(cw):
                 continue
         elif cw > np.pi/2 and cw < 3*np.pi/2:
-            if y_j <= np.tan(cw) * (x_j - x_i) + y_i - r / np.cos(cw):
+            if y_j > np.tan(cw) * (x_j - x_i) + y_i - r / np.cos(cw):
                 continue
         elif np.isclose(cw, np.pi/2):
-            if x_j <= x_i + r:
+            if x_j > x_i + r:
                 continue
         else:  # np.isclose(cw, 3*np.pi/2)
-            if x_j >= x_i - r:
+            if x_j < x_i - r:
                 continue
 
-        # Investigate the sensor's counter-clockwise boundary.
+        # Remove the half-plane that is "more counter-clockwise" than the "more
+        # counter-clockwise" line that is parallel to the clockwise boundary and
+        # tangent to robot i.
         if ccw < np.pi/2 or ccw > 3*np.pi/2:
-            if y_j <= np.tan(ccw) * (x_j - x_i) + y_i + r / np.cos(ccw):
+            if y_j > np.tan(ccw) * (x_j - x_i) + y_i + r / np.cos(ccw):
                 continue
         elif ccw > np.pi/2 and ccw < 3*np.pi/2:
-            if y_j >= np.tan(ccw) * (x_j - x_i) + y_i + r / np.cos(ccw):
+            if y_j < np.tan(ccw) * (x_j - x_i) + y_i + r / np.cos(ccw):
                 continue
         elif np.isclose(ccw, np.pi/2):
-            if x_j >= x_i - r:
+            if x_j < x_i - r:
                 continue
         else:  # np.isclose(ccw, 3*np.pi/2)
-            if x_j <= x_i + r:
+            if x_j > x_i + r:
                 continue
 
-        # Investigate the sensor's axis.
+        # Remove the half-plane "behind" robot i (perpendicular to the sensor).
         if theta_i > 0 and theta_i < np.pi:
-            if y_j > np.tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
+            if y_j <= np.tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
                 continue
         elif theta_i > np.pi and theta_i < 2*np.pi:
-            if y_j < np.tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
+            if y_j >= np.tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
                 continue
         elif np.isclose(theta_i, 0) or np.isclose(theta_i, 2*np.pi):
-            if x_j > r:
+            if x_j <= x_i:
                 continue
         else:  # np.isclose(theta_i, np.pi)
-            if x_j < r:
+            if x_j >= x_i:
                 continue
 
         # If none of the above occur, then robot j is seen by robot i.
         return True
 
     return False
-
-    # NEW CODE:
-    # for j in np.delete(np.arange(len(config)), i):
-    #     # Compute sensing boundaries as y = m * x + b.
-    #     cw_theta, ccw_theta = config[i][2] + np.array([-sensor / 2, sensor / 2])
-    #     cw_m = None if np.isclose(cw_theta, np.pi/2) else np.tan(cw_theta)
-    #     cw_b = config[i][1] - cw_m * config[i][0]
-    #     ccw_m = None if np.isclose(ccw_theta, np.pi/2) else np.tan(ccw_theta)
-    #     ccw_b = config[i][1] - ccw_m * config[i][0]
-    #
-    #     # If robot j's position is inside robot i's sensor, then it is seen.
-    #     # TODO
-    #
-    #     # Otherwise, if robot j intersects either boundary of robot i's sensor,
-    #     # it is seen. Based on the circle-line intersection formula:
-    #     # https://mathworld.wolfram.com/Circle-LineIntersection.html
-    #     # TODO
-    #
-    # return False
 
 
 def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
@@ -191,8 +196,8 @@ def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
             delta = config[i][:2] - config[j][:2]
             dist = np.linalg.norm(delta)
             if dist <= 2*r:
-                forces[i] += delta * K * (2*r - dist) / dist
-                forces[j] -= delta * K * (2*r - dist) / dist
+                forces[i] += (delta / dist) * K * (2*r - dist)
+                forces[j] -= (delta / dist) * K * (2*r - dist)
 
     # Compute motion noise forces.
     if noise[0] == 'mot':
@@ -253,7 +258,7 @@ def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
     - step (float): wall-clock duration of a time step (s)
     - stop (float): if not None, experiment will stop before 'time' if the
                     system's dispersion is within stop% of the ideal value
-    - init (str): 'rand' for random, 'symm' for symmetric, 'dead' for deadlock
+    - init (str): 'rand' for random, 'symm' for symmetric
     - seed (int): random seed
     - silent (bool): False if progress should be shown on command line
 
@@ -273,8 +278,6 @@ def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
         history[0] = init_rand(N, r, rng)
     elif init == 'symm':
         history[0] = init_symm(N, r)
-    elif init == 'dead':
-        history[0] = init_dead(N, r)
     else:
         assert False, 'ERROR: Unrecogized initialization method: ' + init
 
