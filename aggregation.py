@@ -19,15 +19,15 @@ def init_rand(N, r, rng):
     (0,0) such that the robots occupy roughly 2% of the space.
     """
     config = np.zeros((N, 3))
-    box_radius = np.sqrt(N * np.pi * r**2 / 0.02) / 2
+    arena_side_len = np.sqrt(N * np.pi * r**2 / 0.02)
 
     for i in range(N):
         while True:
             # Propose a random position for the i-th robot and accept it if it
             # does not overlap with any existing ones.
-            config[i][0] = (rng.random() - 0.5) * 2 * box_radius  # X
-            config[i][1] = (rng.random() - 0.5) * 2 * box_radius  # Y
-            config[i][2] = rng.random() * 2 * np.pi               # Theta
+            config[i][0] = (rng.random() - 0.5) * arena_side_len  # X
+            config[i][1] = (rng.random() - 0.5) * arena_side_len  # Y
+            config[i][2] = rng.random() * 2*np.pi                 # Theta
             if np.all(np.linalg.norm(config[:i,:2]-config[i][:2], axis=1) > 2*r):
                 break
 
@@ -59,31 +59,31 @@ def ideal(N, r):
     points_tri, layer = [[0,0]], 1
     while len(points_tri) < N:
         # Start a new layer at (layer, 0).
-        x, y = r * layer, 0
+        x, y = layer, 0
         points_tri.append([x,y])
         if len(points_tri) == N:
             break
 
         # Extend along the six segments of the layer.
         while y > -layer and len(points_tri) < N:  # Down-left.
-            y -= r
+            y -= 1
             points_tri.append([x,y])
         while x > 0 and len(points_tri) < N:       # Left.
-            x -= r
+            x -= 1
             points_tri.append([x,y])
         while y < 0 and len(points_tri) < N:       # Up-left.
-            x -= r
-            y += r
+            x -= 1
+            y += 1
             points_tri.append([x,y])
         while y < layer and len(points_tri) < N:   # Up-right.
-            y += r
+            y += 1
             points_tri.append([x,y])
         while x < 0 and len(points_tri) < N:       # Right.
-            x += r
+            x += 1
             points_tri.append([x,y])
         while y > 1 and len(points_tri) < N:       # Down-right.
-            x += r
-            y -= r
+            x += 1
+            y -= 1
             points_tri.append([x,y])
         layer += 1
 
@@ -91,20 +91,39 @@ def ideal(N, r):
     config = np.zeros((N, 3))
     for i in range(N):
         x_tri, y_tri = points_tri[i]
-        config[i][:2] = [x_tri + (y_tri / 2), (np.sqrt(3) / 2) * y_tri]
+        config[i][:2] = [r * (x_tri + (y_tri / 2)), r * (np.sqrt(3)/2) * y_tri]
 
     return config
 
 
-def sense(config, i, r, sensor):
+def spring_constant(R, r, m, w0, step):
+    """
+    Calculate the spring constant for collisions such that the resulting spring
+    force balances the maximum possible overlap.
+
+    Inputs:
+    - R (float): distance from a robot's center to its center of rotation (m)
+    - r (float): radius of a robot (m)
+    - m (float): mass of a robot (kg)
+    - w0 (float): rot. speed of a robot about its center of rotation (rad/s)
+    - step (float): wall-clock duration of a time step (s)
+
+    Returns: K (double) the spring constant
+    """
+    min_dist = np.sqrt(8 * R**2 * (1 - np.cos(w0 * step)) + 4 * r**2 \
+                       + 8 * R * r * np.sin(w0 * step))
+    return (min_dist * m) / ((2 * r - min_dist) * step**2)
+
+
+def sense(i, config, r, sensor):
     """
     Use the line/cone-of-sight sensor to look for other robots.
 
     Inputs:
-    - config: N x 3 array of robot position and orientation data
     - i (int): index of the robot doing the sensing
+    - config: N x 3 array of robot position and orientation data
     - r (float): radius of a robot (cm)
-    - sensor (float): size (in radians) of the line/cone-of-sight sensor
+    - sensor (float): size of the line/cone-of-sight sensor (rad)
 
     Returns: True if another robot is in the sensor region; False otherwise.
     """
@@ -147,6 +166,8 @@ def sense(config, i, r, sensor):
                 continue
 
         # Remove the half-plane "behind" robot i (perpendicular to the sensor).
+        # BUG: This both excludes things that are in fact seen and includes
+        # things that are in fact not seen.
         if theta_i > 0 and theta_i < np.pi:
             if y_j <= np.tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
                 continue
@@ -166,7 +187,7 @@ def sense(config, i, r, sensor):
     return False
 
 
-def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
+def update(config, R, r, m, w0, w1, K, sensor, noise, step, rng):
     """
     Compute robot positions and orientations after a single time step.
 
@@ -177,7 +198,8 @@ def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
     - m (float): mass of a robot (kg)
     - w0 (float): rot. speed of a robot about its center of rotation (rad/s)
     - w1 (float): rot. speed of a robot in place (rad/s)
-    - sensor (float): size (in radians) of the line/cone-of-sight sensor
+    - K (float): spring constant for collisions (N/m)
+    - sensor (float): size of the line/cone-of-sight sensor (rad)
     - noise ((str, float)): ('err', p) for error probability with probability p
                             ('mot', f) for motion noise with force f (N)
     - step (float): wall-clock duration of a time step (s)
@@ -189,7 +211,6 @@ def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
 
     # Compute collision forces.
     forces = np.zeros((len(config), 2))
-    K = 21964 / (28.9 * (step**2))  # Spring constant for hard disks.
     for i in range(len(config)):
         for j in range(i+1, len(config)):
             # If robots i and j overlap, then apply a spring force to both.
@@ -209,7 +230,7 @@ def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
     # Compute translation and rotation from algorithm drive.
     for i in range(len(config)):
         # Use line/cone-of-sight and invert response if using error probability.
-        see_other = sense(config, i, r, sensor)
+        see_other = sense(i, config, r, sensor)
         if noise[0] == 'err' and rng.random() < noise[1]:
             see_other = not see_other
 
@@ -227,8 +248,7 @@ def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
             next[i][2] = (config[i][2] + (w0 * step) + (2*np.pi)) % (2*np.pi)
 
     # Integrate forces and apply to the updated configuration.
-    for i in range(len(config)):
-        next[i][:2] += forces[i] * step**2 / m
+    next[:,:2] += forces * step**2 / m
 
     return next
 
@@ -251,7 +271,7 @@ def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
     - m (float): mass of a robot (kg)
     - w0 (float): rot. speed of a robot about its center of rotation (rad/s)
     - w1 (float): rot. speed of a robot in place (rad/s)
-    - sensor (float): size (in radians) of the line/cone-of-sight sensor
+    - sensor (float): size of the line/cone-of-sight sensor (rad)
     - noise ((str, float)): ('err', p) for error probability with probability p
                             ('mot', f) for motion noise with force f (N)
     - time (float): wall-clock duration of experiment (s)
@@ -281,14 +301,16 @@ def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
     else:
         assert False, 'ERROR: Unrecogized initialization method: ' + init
 
-    # For efficiency's sake, pre-calculate the ideal dispersion for N robots.
+    # For efficiency's sake, pre-calculate the ideal dispersion for N robots and
+    # the spring constant K for collisions.
     disp_ideal = dispersion(ideal(N, r))
+    K = spring_constant(R, r, m, w0, step)
 
     # Simulate the experiment duration by time step.
     for i, t in enumerate(tqdm(steps[1:], disable=silent)):
         # Compute updates to robot positions and orientations.
-        history[i+1] = update(history[i], R, r, m, w0, w1, sensor, noise, step,\
-                              rng)
+        history[i+1] = update(history[i], R, r, m, w0, w1, K, sensor, noise, \
+                              step, rng)
 
         # If specified, check the stopping condition once per second.
         if stop != None and float.is_integer(t) and \
