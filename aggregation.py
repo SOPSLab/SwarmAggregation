@@ -115,14 +115,14 @@ def spring_constant(R, r, m, w0, step):
     return (min_dist * m) / ((2 * r - min_dist) * step**2)
 
 
-def sense(i, config, r, sensor):
+def sense(config, i, r, sensor):
     """
     Use the line/cone-of-sight sensor to look for other robots.
 
     Inputs:
-    - i (int): index of the robot doing the sensing
     - config: N x 3 array of robot position and orientation data
-    - r (float): radius of a robot (cm)
+    - i (int): index of the robot doing the sensing
+    - r (float): radius of a robot (m)
     - sensor (float): size of the line/cone-of-sight sensor (rad)
 
     Returns: True if another robot is in the sensor region; False otherwise.
@@ -230,7 +230,7 @@ def update(config, R, r, m, w0, w1, K, sensor, noise, step, rng):
     # Compute translation and rotation from algorithm drive.
     for i in range(len(config)):
         # Use line/cone-of-sight and invert response if using error probability.
-        see_other = sense(i, config, r, sensor)
+        see_other = sense(config, i, r, sensor)
         if noise[0] == 'err' and rng.random() < noise[1]:
             see_other = not see_other
 
