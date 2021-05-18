@@ -254,10 +254,10 @@ def update(config, R, r, m, w0, w1, K, sensor, noise, step, rng):
 
 
 def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
-                noise=('err', 0), time=60, step=0.005, stop=None, init='rand', \
+                noise=('err', 0), time=300, step=0.005, stop=None, init='rand',\
                 seed=None, silent=False):
     """
-    Execute an aggregation experiment.
+    Execute an aggregation simulation.
 
     Throughout, configuration data tracks:
     - X (float): the x-position of each robot (m)
@@ -273,10 +273,10 @@ def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
     - w1 (float): rot. speed of a robot in place (rad/s)
     - sensor (float): size of the line/cone-of-sight sensor (rad)
     - noise ((str, float)): ('err', p) for error probability with probability p
-                            ('mot', f) for motion noise with force f (N)
-    - time (float): wall-clock duration of experiment (s)
+                            ('mot', f) for motion noise with max force f (N)
+    - time (float): wall-clock duration of simulation (s)
     - step (float): wall-clock duration of a time step (s)
-    - stop (float): if not None, experiment will stop before 'time' if the
+    - stop (float): if not None, simulation will stop before 'time' if the
                     system's dispersion is within stop% of the ideal value
     - init (str): 'rand' for random, 'symm' for symmetric
     - seed (int): random seed
@@ -306,7 +306,7 @@ def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
     disp_ideal = dispersion(ideal(N, r))
     K = spring_constant(R, r, m, w0, step)
 
-    # Simulate the experiment duration by time step.
+    # Simulate the simulation duration by time step.
     for i, t in enumerate(tqdm(steps[1:], disable=silent)):
         # Compute updates to robot positions and orientations.
         history[i+1] = update(history[i], R, r, m, w0, w1, K, sensor, noise, \
@@ -318,4 +318,4 @@ def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
             return (history, i+1)
 
     # Return history of configurations.
-    return (history, -1)
+    return (history, len(history))

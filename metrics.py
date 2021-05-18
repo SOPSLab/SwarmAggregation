@@ -7,9 +7,17 @@
 metrics: A library of aggregation metrics.
 """
 
+import math
 from miniball import get_bounding_ball
 import numpy as np
 from scipy.spatial import ConvexHull, distance_matrix
+
+
+def norm2(vec):
+    """
+    Returns the 2-norm of a 2D vector. Faster than np.linalg.norm(vec).
+    """
+    return math.sqrt(vec[0]**2 + vec[1]**2)
 
 
 def sed_circumference(config):
@@ -30,7 +38,7 @@ def hull_perimeter(config):
     perimeter = 0
     for i in range(len(hull.vertices)):
         v1, v2 = config[hull.vertices[i-1]][:2], config[hull.vertices[i]][:2]
-        perimeter += np.linalg.norm(v1 - v2)
+        perimeter += norm2(v1 - v2)
 
     return perimeter
 
