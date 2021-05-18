@@ -277,7 +277,7 @@ class Experiment(object):
 
         # Animate.
         ani = ArtistAnimation(fig, ims, interval=interval, blit=True)
-        ani.save('figs/' + self.fname + '_ani' + anno + '.mp4')
+        ani.save('anis/' + self.fname + '_ani' + anno + '.mp4')
         plt.close()
 
 
