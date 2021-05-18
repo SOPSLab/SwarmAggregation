@@ -57,7 +57,7 @@ class Experiment(object):
         self.id, self.iters, self.savehist, self.seed, = id, iters, savehist, seed
 
         # Unpack aggregation parameters.
-        defaults = {'N' : [50], 'R' : [0.1445], 'r' : [0.037], 'm' : [0.125], \
+        defaults = {'N' : [100], 'R' : [0.1445], 'r' : [0.037], 'm' : [0.125], \
                     'w0' : [-0.75], 'w1' : [-5.02], 'sensor' : [0], \
                     'noise' : [('err', 0)], 'time' : [300], 'step' : [0.005], \
                     'stop' : [None], 'init' : ['rand']}
@@ -94,8 +94,11 @@ class Experiment(object):
                 run_data = aggregation(N, R, r, m, w0, w1, sensor, noise, time,\
                                        step, stop, init, seed, silent)
                 if not self.savehist:
-                    self.runs_data[i].append(run_data[0,-1])
+                    # Only save the final configuration.
+                    final = run_data[1]
+                    self.runs_data[i].append((run_data[0][final-1], final))
                 else:
+                    # Save the entire configuration history.
                     self.runs_data[i].append(run_data)
 
 
@@ -170,7 +173,7 @@ class Experiment(object):
             ax.set_ylim(bottom=0)
             ax.grid()
             if labels != None:
-                ax.legend(loc='upper left')
+                ax.legend(loc='upper right')
             plt.tight_layout()
             fig.savefig('figs/' + self.fname + '_' + metric + anno + '.png', \
                         dpi=300)
@@ -245,7 +248,7 @@ class Experiment(object):
 
         ims = []
         max_dist = hypot(*(2*r + np.array([fig_min, fig_max])))
-        for s in tqdm(np.arange(0, min(len(configs), final + 1), frame_step)):
+        for s in tqdm(np.arange(0, min(len(configs), final), frame_step)):
             title = plt.text(1.0, 1.02, '{:.2f}s of {}s'.format(s*step, time), \
                              ha='right', va='bottom', transform=ax.transAxes)
             robots, lines, cones = [], [], []
@@ -316,7 +319,8 @@ def exp_symm(seed=None):
     exp.run()
     exp.save()
     exp.plot_evo(runs=np.arange(len(exp.params)), iters=[0], metrics=['disp'], \
-                 labels=['{} robots'.format(i) for i in N])
+                 labels=['{} robots'.format(i) for i in N], \
+                 title='Symmetric Initial Configuration')
 
 
 def exp_errprob(seed=None):
@@ -369,7 +373,7 @@ def exp_step(seed=None):
     aggregation over time.
     """
     step = [0.0005, 0.001, 0.005, 0.01, 0.025]
-    params = {'time' : [120], 'step' : step}
+    params = {'N' : [50], 'time' : [120], 'step' : step}
     exp = Experiment('step', params, seed=seed)
     exp.run()
     exp.save()

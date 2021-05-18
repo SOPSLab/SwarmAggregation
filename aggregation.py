@@ -40,7 +40,7 @@ def init_symm(N, R):
     Initialize N robots with rotational radii R in a symmetric cycle.
     """
     config = np.zeros((N, 3))
-    cycle_radius = (N + 1) * R
+    cycle_radius = 3 * (N + 1) * R
     cycle_step = 2*np.pi / N
 
     for i in range(N):
@@ -92,7 +92,7 @@ def ideal(N, r):
     config = np.zeros((N, 3))
     for i in range(N):
         x_tri, y_tri = points_tri[i]
-        config[i][:2] = [r * (x_tri + (y_tri / 2)), r * (sqrt(3)/2) * y_tri]
+        config[i][:2] = [2*r * (x_tri + (y_tri / 2)), 2*r * (sqrt(3)/2) * y_tri]
 
     return config
 
@@ -235,9 +235,9 @@ def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
     return next
 
 
-def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
-                noise=('err', 0), time=300, step=0.005, stop=None, init='rand',\
-                seed=None, silent=False):
+def aggregation(N=100, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, \
+                sensor=0, noise=('err', 0), time=300, step=0.005, stop=None, \
+                init='rand', seed=None, silent=False):
     """
     Execute an aggregation simulation.
 
