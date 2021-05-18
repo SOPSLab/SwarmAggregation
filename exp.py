@@ -11,6 +11,7 @@ exp: A flexible, unifying framework for defining and running experiments for
 import argparse
 from aggregation import aggregation, ideal
 from itertools import product
+from math import sin, cos, hypot
 from matplotlib.animation import FFMpegWriter, ArtistAnimation
 import matplotlib.cm as cm
 from matplotlib.collections import LineCollection, PatchCollection, PolyCollection
@@ -243,9 +244,9 @@ class Experiment(object):
         interval = (step * frame_step) * 1000  # ms
 
         ims = []
-        max_dist = norm2(2*r + np.array([fig_min, fig_max]))
+        max_dist = hypot(*(2*r + np.array([fig_min, fig_max])))
         for s in tqdm(np.arange(0, min(len(configs), final + 1), frame_step)):
-            title = plt.text(1.0, 1.05, '{:.2f}s of {}s'.format(s*step, time), \
+            title = plt.text(1.0, 1.02, '{:.2f}s of {}s'.format(s*step, time), \
                              ha='right', va='bottom', transform=ax.transAxes)
             robots, lines, cones = [], [], []
             for i in range(N):
@@ -256,14 +257,14 @@ class Experiment(object):
                                          color=c[i]))
 
                 # Add this robot's sight sensor direction artist.
-                vec = max_dist * np.array([np.cos(robot[2]), np.sin(robot[2])])
+                vec = max_dist * np.array([cos(robot[2]), sin(robot[2])])
                 lines.append([robot[:2], robot[:2] + vec])
 
                 # Add this robot's cone-of-sight polygon artist.
                 if sensor > 0:
                     cw, ccw = robot[2] - sensor / 2, robot[2] + sensor / 2
-                    vec_cw = max_dist * np.array([np.cos(cw), np.sin(cw)])
-                    vec_ccw = max_dist * np.array([np.cos(ccw), np.sin(ccw)])
+                    vec_cw = max_dist * np.array([cos(cw), sin(cw)])
+                    vec_ccw = max_dist * np.array([cos(ccw), sin(ccw)])
                     tri_pts = [robot[:2], robot[:2]+vec_cw, robot[:2]+vec_ccw]
                     cones.append(plt.Polygon(tri_pts, color=c[i], alpha=0.3))
 
@@ -280,6 +281,16 @@ class Experiment(object):
         plt.close()
 
 
+def load_exp(fname):
+    """
+    Load an experiment from the specified file.
+    """
+    with open(fname, 'rb') as f:
+        exp = pickle.load(f)
+
+    return exp
+
+
 ### DATA EXPERIMENTS ###
 
 def exp_base(seed=None):
@@ -291,6 +302,7 @@ def exp_base(seed=None):
     exp.run()
     exp.save()
     exp.plot_evo(runs=[0], iters=[0])
+    exp.animate(run=0, iter=0)
 
 
 def exp_symm(seed=None):
@@ -313,7 +325,7 @@ def exp_errprob(seed=None):
     average time to aggregation with a 15% stopping condition.
     """
     N = [10, 25, 50, 100]
-    errprob = np.arange(0, 0.0205, 0.0005)
+    errprob = np.arange(0, 0.3625, 0.0125)
     params = {'N' : N, 'noise' : [('err', p) for p in errprob], 'stop' : [0.15]}
     exp = Experiment('errprob', params, iters=10, savehist=False, seed=seed)
     exp.run()
@@ -357,7 +369,7 @@ def exp_step(seed=None):
     aggregation over time.
     """
     step = [0.0005, 0.001, 0.005, 0.01, 0.025]
-    params = {'step' : step}
+    params = {'time' : [120], 'step' : step}
     exp = Experiment('step', params, seed=seed)
     exp.run()
     exp.save()

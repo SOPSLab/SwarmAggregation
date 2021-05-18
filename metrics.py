@@ -7,17 +7,10 @@
 metrics: A library of aggregation metrics.
 """
 
-import math
-from miniball import get_bounding_ball
+from math import hypot
 import numpy as np
 from scipy.spatial import ConvexHull, distance_matrix
-
-
-def norm2(vec):
-    """
-    Returns the 2-norm of a 2D vector. Faster than np.linalg.norm(vec).
-    """
-    return math.sqrt(vec[0]**2 + vec[1]**2)
+from welzl import welzl
 
 
 def sed_circumference(config):
@@ -25,7 +18,7 @@ def sed_circumference(config):
     Takes as input an N x 3 array of robot position and orientation data and
     returns the circumference of the system's smallest enclosing disc.
     """
-    _, radius = get_bounding_ball(config[:,:2])
+    _, _, radius = welzl(config[:,:2])
     return 2*np.pi * radius
 
 
@@ -38,7 +31,7 @@ def hull_perimeter(config):
     perimeter = 0
     for i in range(len(hull.vertices)):
         v1, v2 = config[hull.vertices[i-1]][:2], config[hull.vertices[i]][:2]
-        perimeter += norm2(v1 - v2)
+        perimeter += hypot(*(v1 - v2))
 
     return perimeter
 
@@ -52,17 +45,17 @@ def dispersion(config):
     return np.sum(np.sqrt((xs - np.mean(xs))**2 + (ys - np.mean(ys))**2))
 
 
-def cluster_fraction(config, r):
+def cluster_fraction(config, r, eps=0.05):
     """
     Takes as input an N x 3 array of robot position and orientation data and the
     radius of each robot and returns the fraction of robots in the system's
-    largest connected cluster.
+    largest connected cluster, where 'connected' is within epsilon% touching.
     """
     def DFS(config, i, r, dists, visited, cluster):
         visited[i] = 1
         cluster.append(i)
         for j in range(len(config)):
-            if visited[j] == 0 and dists[i][j] <= 2.01*r:
+            if visited[j] == 0 and dists[i][j] <= (2 + eps)*r:
                 DFS(config, j, r, dists, visited, cluster)
 
     dists = distance_matrix(config[:,:2], config[:,:2])

@@ -8,8 +8,8 @@ aggregation: A physical simulation of e-puck robots performing aggregation
              according to the Gauci et al. (2014) algorithm.
 """
 
-from math import sqrt, sin, cos, tan, isclose
-from metrics import norm2, dispersion
+from math import sqrt, sin, cos, tan, hypot, isclose
+from metrics import dispersion
 import numpy as np
 from tqdm import tqdm
 
@@ -97,25 +97,6 @@ def ideal(N, r):
     return config
 
 
-def spring_constant(R, r, m, w0, step):
-    """
-    Calculate the spring constant for collisions such that the resulting spring
-    force balances the maximum possible overlap.
-
-    Inputs:
-    - R (float): distance from a robot's center to its center of rotation (m)
-    - r (float): radius of a robot (m)
-    - m (float): mass of a robot (kg)
-    - w0 (float): rot. speed of a robot about its center of rotation (rad/s)
-    - step (float): wall-clock duration of a time step (s)
-
-    Returns: K (double) the spring constant
-    """
-    min_dist = sqrt(8 * R**2 * (1 - cos(w0 * step)) + 4 * r**2 + \
-                    8 * R * r * sin(w0 * step))
-    return (min_dist * m) / ((2 * r - min_dist) * step**2)
-
-
 def sense(config, i, r, sensor):
     """
     Use the line/cone-of-sight sensor to look for other robots.
@@ -188,7 +169,7 @@ def sense(config, i, r, sensor):
     return False
 
 
-def update(config, R, r, m, w0, w1, K, sensor, noise, step, rng):
+def update(config, R, r, m, w0, w1, sensor, noise, step, rng):
     """
     Compute robot positions and orientations after a single time step.
 
@@ -199,7 +180,6 @@ def update(config, R, r, m, w0, w1, K, sensor, noise, step, rng):
     - m (float): mass of a robot (kg)
     - w0 (float): rot. speed of a robot about its center of rotation (rad/s)
     - w1 (float): rot. speed of a robot in place (rad/s)
-    - K (float): spring constant for collisions (N/m)
     - sensor (float): size of the line/cone-of-sight sensor (rad)
     - noise ((str, float)): ('err', p) for error probability with probability p
                             ('mot', f) for motion noise with force f (N)
@@ -212,11 +192,12 @@ def update(config, R, r, m, w0, w1, K, sensor, noise, step, rng):
 
     # Compute collision forces.
     forces = np.zeros((len(config), 2))
+    K = m / (2 * step**2)  # Sufficient and necessary to undo any overlap.
     for i in range(len(config)):
         for j in range(i+1, len(config)):
             # If robots i and j overlap, then apply a spring force to both.
             delta = config[i][:2] - config[j][:2]
-            dist = norm2(delta)
+            dist = hypot(*delta)
             if dist <= 2*r:
                 forces[i] += (delta / dist) * K * (2*r - dist)
                 forces[j] -= (delta / dist) * K * (2*r - dist)
@@ -302,16 +283,14 @@ def aggregation(N=50, R=0.1445, r=0.037, m=0.152, w0=-0.75, w1=-5.02, sensor=0,\
     else:
         assert False, 'ERROR: Unrecogized initialization method: ' + init
 
-    # For efficiency's sake, pre-calculate the ideal dispersion for N robots and
-    # the spring constant K for collisions.
+    # For efficiency's sake, pre-calculate the ideal dispersion for N robots.
     disp_ideal = dispersion(ideal(N, r))
-    K = spring_constant(R, r, m, w0, step)
 
     # Simulate the simulation duration by time step.
     for i, t in enumerate(tqdm(steps[1:], disable=silent)):
         # Compute updates to robot positions and orientations.
-        history[i+1] = update(history[i], R, r, m, w0, w1, K, sensor, noise, \
-                              step, rng)
+        history[i+1] = update(history[i], R, r, m, w0, w1, sensor, noise, step,\
+                              rng)
 
         # If specified, check the stopping condition once per second.
         if stop != None and float.is_integer(t) and \
