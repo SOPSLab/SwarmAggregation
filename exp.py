@@ -244,7 +244,7 @@ class Experiment(object):
 
         ims = []
         max_dist = norm2(2*r + np.array([fig_min, fig_max]))
-        for s in range(0, min(len(configs), final + 1), frame_step):
+        for s in tqdm(np.arange(0, min(len(configs), final + 1), frame_step)):
             title = plt.text(1.0, 1.05, '{:.2f}s of {}s'.format(s*step, time), \
                              ha='right', va='bottom', transform=ax.transAxes)
             robots, lines, cones = [], [], []

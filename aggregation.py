@@ -8,7 +8,8 @@ aggregation: A physical simulation of e-puck robots performing aggregation
              according to the Gauci et al. (2014) algorithm.
 """
 
-from metrics import dispersion
+from math import sqrt, sin, cos, tan, isclose
+from metrics import norm2, dispersion
 import numpy as np
 from tqdm import tqdm
 
@@ -19,7 +20,7 @@ def init_rand(N, r, rng):
     (0,0) such that the robots occupy roughly 2% of the space.
     """
     config = np.zeros((N, 3))
-    arena_side_len = np.sqrt(N * np.pi * r**2 / 0.02)
+    arena_side_len = sqrt(N * np.pi * r**2 / 0.02)
 
     for i in range(N):
         while True:
@@ -43,8 +44,8 @@ def init_symm(N, R):
     cycle_step = 2*np.pi / N
 
     for i in range(N):
-        config[i][0] = cycle_radius * np.cos(cycle_step * i)  # X
-        config[i][1] = cycle_radius * np.sin(cycle_step * i)  # Y
+        config[i][0] = cycle_radius * cos(cycle_step * i)  # X
+        config[i][1] = cycle_radius * sin(cycle_step * i)  # Y
         config[i][2] = cycle_step * i                         # Theta
 
     return config
@@ -91,7 +92,7 @@ def ideal(N, r):
     config = np.zeros((N, 3))
     for i in range(N):
         x_tri, y_tri = points_tri[i]
-        config[i][:2] = [r * (x_tri + (y_tri / 2)), r * (np.sqrt(3)/2) * y_tri]
+        config[i][:2] = [r * (x_tri + (y_tri / 2)), r * (sqrt(3)/2) * y_tri]
 
     return config
 
@@ -110,8 +111,8 @@ def spring_constant(R, r, m, w0, step):
 
     Returns: K (double) the spring constant
     """
-    min_dist = np.sqrt(8 * R**2 * (1 - np.cos(w0 * step)) + 4 * r**2 \
-                       + 8 * R * r * np.sin(w0 * step))
+    min_dist = sqrt(8 * R**2 * (1 - cos(w0 * step)) + 4 * r**2 + \
+                    8 * R * r * sin(w0 * step))
     return (min_dist * m) / ((2 * r - min_dist) * step**2)
 
 
@@ -137,15 +138,15 @@ def sense(config, i, r, sensor):
         # clockwise" line that is parallel to the clockwise boundary and tangent
         # to robot i.
         if cw < np.pi/2 or cw > 3*np.pi/2:
-            if y_j < np.tan(cw) * (x_j - x_i) + y_i - r / np.cos(cw):
+            if y_j < tan(cw) * (x_j - x_i) + y_i - r / cos(cw):
                 continue
         elif cw > np.pi/2 and cw < 3*np.pi/2:
-            if y_j > np.tan(cw) * (x_j - x_i) + y_i - r / np.cos(cw):
+            if y_j > tan(cw) * (x_j - x_i) + y_i - r / cos(cw):
                 continue
-        elif np.isclose(cw, np.pi/2):
+        elif isclose(cw, np.pi/2):
             if x_j > x_i + r:
                 continue
-        else:  # np.isclose(cw, 3*np.pi/2)
+        else:  # isclose(cw, 3*np.pi/2)
             if x_j < x_i - r:
                 continue
 
@@ -153,15 +154,15 @@ def sense(config, i, r, sensor):
         # counter-clockwise" line that is parallel to the clockwise boundary and
         # tangent to robot i.
         if ccw < np.pi/2 or ccw > 3*np.pi/2:
-            if y_j > np.tan(ccw) * (x_j - x_i) + y_i + r / np.cos(ccw):
+            if y_j > tan(ccw) * (x_j - x_i) + y_i + r / cos(ccw):
                 continue
         elif ccw > np.pi/2 and ccw < 3*np.pi/2:
-            if y_j < np.tan(ccw) * (x_j - x_i) + y_i + r / np.cos(ccw):
+            if y_j < tan(ccw) * (x_j - x_i) + y_i + r / cos(ccw):
                 continue
-        elif np.isclose(ccw, np.pi/2):
+        elif isclose(ccw, np.pi/2):
             if x_j < x_i - r:
                 continue
-        else:  # np.isclose(ccw, 3*np.pi/2)
+        else:  # isclose(ccw, 3*np.pi/2)
             if x_j > x_i + r:
                 continue
 
@@ -169,15 +170,15 @@ def sense(config, i, r, sensor):
         # BUG: This both excludes things that are in fact seen and includes
         # things that are in fact not seen.
         if theta_i > 0 and theta_i < np.pi:
-            if y_j <= np.tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
+            if y_j <= tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
                 continue
         elif theta_i > np.pi and theta_i < 2*np.pi:
-            if y_j >= np.tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
+            if y_j >= tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
                 continue
-        elif np.isclose(theta_i, 0) or np.isclose(theta_i, 2*np.pi):
+        elif isclose(theta_i, 0) or isclose(theta_i, 2*np.pi):
             if x_j <= x_i:
                 continue
-        else:  # np.isclose(theta_i, np.pi)
+        else:  # isclose(theta_i, np.pi)
             if x_j >= x_i:
                 continue
 
@@ -215,7 +216,7 @@ def update(config, R, r, m, w0, w1, K, sensor, noise, step, rng):
         for j in range(i+1, len(config)):
             # If robots i and j overlap, then apply a spring force to both.
             delta = config[i][:2] - config[j][:2]
-            dist = np.linalg.norm(delta)
+            dist = norm2(delta)
             if dist <= 2*r:
                 forces[i] += (delta / dist) * K * (2*r - dist)
                 forces[j] -= (delta / dist) * K * (2*r - dist)
@@ -225,7 +226,7 @@ def update(config, R, r, m, w0, w1, K, sensor, noise, step, rng):
         for i in range(len(config)):
             force = rng.random() * noise[1]
             theta = rng.random() * 2*np.pi
-            forces[i] += force * np.array([np.cos(theta), np.sin(theta)])
+            forces[i] += force * np.array([cos(theta), sin(theta)])
 
     # Compute translation and rotation from algorithm drive.
     for i in range(len(config)):
@@ -240,11 +241,11 @@ def update(config, R, r, m, w0, w1, K, sensor, noise, step, rng):
         else:  # Rotate clockwise around center of rotation.
             # Compute location of the center of rotation, c.
             c_angle = (config[i][2] + np.pi/2)
-            c = config[i][:2] + R * np.array([np.cos(c_angle), np.sin(c_angle)])
+            c = config[i][:2] + R * np.array([cos(c_angle), sin(c_angle)])
 
             # Compute rotation around c.
             c_angle = (c_angle + np.pi + (w0 * step))
-            next[i][:2] = c + R * np.array([np.cos(c_angle), np.sin(c_angle)])
+            next[i][:2] = c + R * np.array([cos(c_angle), sin(c_angle)])
             next[i][2] = (config[i][2] + (w0 * step) + (2*np.pi)) % (2*np.pi)
 
     # Integrate forces and apply to the updated configuration.
