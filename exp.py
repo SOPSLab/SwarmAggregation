@@ -180,7 +180,7 @@ class Experiment(object):
             plt.close()
 
 
-    def plot_aggtime(self, N, pvals, plabel, title='', anno=''):
+    def plot_aggtime(self, N, ps, plabel, title='', anno=''):
         """
         Plots final and average time to aggregation per parameter value per
         number of robots. Assumes that the only parameters that are varied are
@@ -194,20 +194,21 @@ class Experiment(object):
         c = np.array(cmap(np.linspace(0, 1, len(N) + 2))).T
 
         # Plot simulation time cutoff as a dashed line.
-        time = self.params[0][8]
-        ax.plot(pvals, np.full(len(pvals), time), color='k', linestyle='dashed')
+        time, step = self.params[0][8], self.params[0][9]
+        ax.plot(ps, np.full(len(ps), time), color='k', linestyle='dashed')
 
         # Plot iteration times as a scatter plot and averages as lines.
         for i, ni in enumerate(N):
             xs, ys, aves = [], [], []
-            for run in self.run_data[i:i+len(pvals)]:
-                step = self.params[j][9]
-                agg_times = [iter[1] * step for iter in run]
-                xs += pvals
+            for j, run in enumerate(self.runs_data[i*len(ps):(i+1)*len(ps)]):
+                agg_times = []
+                for iter in run:
+                    xs.append(ps[j])
+                    agg_times.append(iter[1] * step)
                 ys += agg_times
                 aves.append(np.mean(agg_times))
-            ax.scatter(xs, ys, color=color[i+1], s=5, alpha=0.4)
-            ax.plot(pvals, aves, color=color[i+1], label='{} robots'.format(ni))
+            ax.scatter(xs, ys, color=c[i+1], s=15, alpha=0.4)
+            ax.plot(ps, aves, color=c[i+1], label='{} robots'.format(ni))
 
         # Save figure.
         ax.set(title=title, xlabel=plabel, ylabel='Aggregation Time (s)')
@@ -329,7 +330,7 @@ def exp_errprob(seed=None):
     average time to aggregation with a 15% stopping condition.
     """
     N = [10, 25, 50, 100]
-    errprob = np.arange(0, 0.3625, 0.0125)
+    errprob = np.arange(0, 0.351, 0.0125)
     params = {'N' : N, 'noise' : [('err', p) for p in errprob], 'stop' : [0.15]}
     exp = Experiment('errprob', params, iters=10, savehist=False, seed=seed)
     exp.run()
@@ -343,7 +344,7 @@ def exp_motion(seed=None):
     average time to aggregation with a 15% stopping condition.
     """
     N = [10, 25, 50, 100]
-    fmax = np.arange(0, 0.50125, 0.0125)
+    fmax = np.arange(0, 0.451, 0.0125)
     params = {'N' : N, 'noise' : [('mot', f) for f in fmax], 'stop' : [0.15]}
     exp = Experiment('motion', params, iters=10, savehist=False, seed=seed)
     exp.run()
