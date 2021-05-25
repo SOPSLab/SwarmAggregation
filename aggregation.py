@@ -110,7 +110,8 @@ def sense(config, i, r, sensor):
     Returns: True if another robot is in the sensor region; False otherwise.
     """
     x_i, y_i, theta_i = config[i]
-    cw, ccw = theta_i - sensor / 2, theta_i + sensor / 2
+    cw = (theta_i - sensor / 2 + 2*np.pi) % (2*np.pi)
+    ccw = (theta_i + sensor / 2 + 2*np.pi) % (2*np.pi)
 
     for j in np.arange(len(config)):
         x_j, y_j, _ = config[j]
