@@ -95,8 +95,8 @@ class Experiment(object):
                                        step, stop, init, seed, silent)
                 if not self.savehist:
                     # Only save the final configuration.
-                    final = run_data[1]
-                    self.runs_data[i].append((run_data[0][final-1], final))
+                    history, final = run_data
+                    self.runs_data[i].append((np.copy(history[final-1]), final))
                 else:
                     # Save the entire configuration history.
                     self.runs_data[i].append(run_data)
@@ -344,7 +344,7 @@ def exp_motion(seed=None):
     average time to aggregation with a 15% stopping condition.
     """
     N = [10, 25, 50, 100]
-    fmax = np.arange(0, 0.451, 0.0125)
+    fmax = np.arange(0, 45.1, 1.5)
     params = {'N' : N, 'noise' : [('mot', f) for f in fmax], 'stop' : [0.15]}
     exp = Experiment('motion', params, iters=10, savehist=False, seed=seed)
     exp.run()
