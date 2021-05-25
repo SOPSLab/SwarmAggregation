@@ -147,20 +147,22 @@ def sense(config, i, r, sensor):
             if x_j > x_i + r:
                 continue
 
-        # Remove the half-plane "behind" robot i (perpendicular to the sensor).
-        # BUG: This both excludes things that are in fact seen and includes
-        # things that are in fact not seen.
+        # Remove the half-plane "behind" robot i: perpendicular to the sensor's
+        # central ray and intersecting the two points of tangency (from the
+        # "clockwise" and "counter-clockwise" half-planes).
         if theta_i > 0 and theta_i < np.pi:
-            if y_j <= tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
+            if y_j <= tan(theta_i + np.pi/2) * (x_j - x_i + r*sin(ccw)) + y_i +\
+                      r*cos(ccw):
                 continue
         elif theta_i > np.pi and theta_i < 2*np.pi:
-            if y_j >= tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
+            if y_j >= tan(theta_i + np.pi/2) * (x_j - x_i + r*sin(ccw)) + y_i +\
+                      r*cos(ccw):
                 continue
         elif isclose(theta_i, 0) or isclose(theta_i, 2*np.pi):
-            if x_j <= x_i:
+            if x_j <= x_i - r*sin(ccw):
                 continue
         else:  # isclose(theta_i, np.pi)
-            if x_j >= x_i:
+            if x_j >= x_i + r*sin(ccw):
                 continue
 
         # If none of the above occur, then robot j is seen by robot i.
