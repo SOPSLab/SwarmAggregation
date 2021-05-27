@@ -330,7 +330,7 @@ def exp_errprob(seed=None):
     average time to aggregation with a 15% stopping condition.
     """
     N = [10, 25, 50, 100]
-    errprob = np.arange(0, 0.451, 0.015)
+    errprob = np.arange(0, 0.501, 0.0125)
     params = {'N' : N, 'noise' : [('err', p) for p in errprob], 'stop' : [0.15]}
     exp = Experiment('errprob', params, iters=10, savehist=False, seed=seed)
     exp.run()
@@ -344,7 +344,7 @@ def exp_motion(seed=None):
     average time to aggregation with a 15% stopping condition.
     """
     N = [10, 25, 50, 100]
-    fmax = np.arange(0, 45.1, 1.5)
+    fmax = np.arange(0, 40.1, 1.25)
     params = {'N' : N, 'noise' : [('mot', f) for f in fmax], 'stop' : [0.15]}
     exp = Experiment('motion', params, iters=10, savehist=False, seed=seed)
     exp.run()
