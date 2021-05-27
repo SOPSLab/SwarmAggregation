@@ -46,7 +46,7 @@ def init_symm(N, R):
     for i in range(N):
         config[i][0] = cycle_radius * cos(cycle_step * i)  # X
         config[i][1] = cycle_radius * sin(cycle_step * i)  # Y
-        config[i][2] = cycle_step * i                         # Theta
+        config[i][2] = cycle_step * i                      # Theta
 
     return config
 
@@ -110,61 +110,55 @@ def sense(config, i, r, sensor):
     Returns: True if another robot is in the sensor region; False otherwise.
     """
     x_i, y_i, theta_i = config[i]
-    cw, ccw = theta_i - sensor / 2, theta_i + sensor / 2
+    cw = (theta_i - sensor / 2 + 2*np.pi) % (2*np.pi)
+    ccw = (theta_i + sensor / 2 + 2*np.pi) % (2*np.pi)
 
-    for j in np.arange(len(config)):
+    for j in range(len(config)):
+        # A robot never sees itself.
+        if i == j:
+            continue
+
+        # Get robot j's center and precompute differences for efficiency.
         x_j, y_j, _ = config[j]
+        x_diff, y_diff = x_j - x_i, y_j - y_i
 
-        # Remove the half-plane that is "more clockwise" than the "more
-        # clockwise" line that is parallel to the clockwise boundary and tangent
-        # to robot i.
-        if cw < np.pi/2 or cw > 3*np.pi/2:
-            if y_j < tan(cw) * (x_j - x_i) + y_i - r / cos(cw):
-                continue
-        elif cw > np.pi/2 and cw < 3*np.pi/2:
-            if y_j > tan(cw) * (x_j - x_i) + y_i - r / cos(cw):
-                continue
-        elif isclose(cw, np.pi/2):
-            if x_j > x_i + r:
-                continue
-        else:  # isclose(cw, 3*np.pi/2)
-            if x_j < x_i - r:
-                continue
+        # If robot j's center is in robot i's sight sensor, j is seen.
+        if sensor > 0:
+            in_cw, in_ccw = False, False
+            if cw < np.pi/2 or cw > 3*np.pi/2:
+                in_cw = (y_diff >= tan(cw) * x_diff)
+            elif cw > np.pi/2 and cw < 3*np.pi/2:
+                in_cw = (y_diff <= tan(cw) * x_diff)
+            elif isclose(cw, np.pi/2):
+                in_cw = (x_diff <= 0)
+            else:  # isclose(cw, 3*np.pi/2)
+                in_cw = (x_diff >= 0)
 
-        # Remove the half-plane that is "more counter-clockwise" than the "more
-        # counter-clockwise" line that is parallel to the clockwise boundary and
-        # tangent to robot i.
-        if ccw < np.pi/2 or ccw > 3*np.pi/2:
-            if y_j > tan(ccw) * (x_j - x_i) + y_i + r / cos(ccw):
-                continue
-        elif ccw > np.pi/2 and ccw < 3*np.pi/2:
-            if y_j < tan(ccw) * (x_j - x_i) + y_i + r / cos(ccw):
-                continue
-        elif isclose(ccw, np.pi/2):
-            if x_j < x_i - r:
-                continue
-        else:  # isclose(ccw, 3*np.pi/2)
-            if x_j > x_i + r:
-                continue
+            # Skip checking the CCW boundary if not in the CW boundary.
+            if in_cw:
+                if ccw < np.pi/2 or ccw > 3*np.pi/2:
+                    in_ccw = (y_diff <= tan(ccw) * x_diff)
+                elif ccw > np.pi/2 and ccw < 3*np.pi/2:
+                    in_ccw = (y_diff >= tan(ccw) * x_diff)
+                elif isclose(ccw, np.pi/2):
+                    in_ccw = (x_diff >= 0)
+                else:  # isclose(ccw, 3*np.pi/2)
+                    in_ccw = (x_diff <= 0)
 
-        # Remove the half-plane "behind" robot i (perpendicular to the sensor).
-        # BUG: This both excludes things that are in fact seen and includes
-        # things that are in fact not seen.
-        if theta_i > 0 and theta_i < np.pi:
-            if y_j <= tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
-                continue
-        elif theta_i > np.pi and theta_i < 2*np.pi:
-            if y_j >= tan(theta_i + np.pi/2) * (x_j - x_i) + y_i:
-                continue
-        elif isclose(theta_i, 0) or isclose(theta_i, 2*np.pi):
-            if x_j <= x_i:
-                continue
-        else:  # isclose(theta_i, np.pi)
-            if x_j >= x_i:
-                continue
+                if in_ccw:  # Robot j's center is in both boundaries.
+                    return True
 
-        # If none of the above occur, then robot j is seen by robot i.
-        return True
+        # Next, if the robots' centers are closer than their radius, j is seen.
+        dist = hypot(x_diff, y_diff)
+        if dist <= r:
+            return True
+
+        # Finally, if robot j's body intersects a boundary of robot i's sight
+        # sensor, j is seen.
+        for bnd in [cw, ccw]:
+            dot = x_diff * cos(bnd) + y_diff * sin(bnd)
+            if dot > 0 and (r**2 + dot**2 >= dist**2):
+                return True
 
     return False
 

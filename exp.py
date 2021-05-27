@@ -330,7 +330,7 @@ def exp_errprob(seed=None):
     average time to aggregation with a 15% stopping condition.
     """
     N = [10, 25, 50, 100]
-    errprob = np.arange(0, 0.351, 0.0125)
+    errprob = np.arange(0, 0.451, 0.015)
     params = {'N' : N, 'noise' : [('err', p) for p in errprob], 'stop' : [0.15]}
     exp = Experiment('errprob', params, iters=10, savehist=False, seed=seed)
     exp.run()
