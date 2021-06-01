@@ -1,7 +1,7 @@
 # Project:     SwarmAggregation
 # Filename:    aggregation.py
 # Authors:     Joshua J. Daymude (jdaymude@asu.edu) and Noble C. Harasha
-#              (nharasha1202@gmail.com).
+#              (nharasha@mit.edu).
 
 """
 aggregation: A physical simulation of e-puck robots performing aggregation

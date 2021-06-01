@@ -1,7 +1,7 @@
 # Project:     SwarmAggregation
 # Filename:    exp.py
 # Authors:     Joshua J. Daymude (jdaymude@asu.edu) and Noble C. Harasha
-#              (nharasha1202@gmail.com).
+#              (nharasha@mit.edu).
 
 """
 exp: A flexible, unifying framework for defining and running experiments for
@@ -11,7 +11,7 @@ exp: A flexible, unifying framework for defining and running experiments for
 import argparse
 from aggregation import aggregation, ideal
 from itertools import product
-from math import sin, cos, hypot
+from math import sin, cos, hypot, ceil
 from matplotlib.animation import FFMpegWriter, ArtistAnimation
 import matplotlib.cm as cm
 from matplotlib.collections import LineCollection, PatchCollection, PolyCollection
@@ -220,7 +220,7 @@ class Experiment(object):
         plt.close()
 
 
-    def animate(self, run, iter, anno=''):
+    def animate(self, run, iter, frame=25, anno=''):
         """
         Animate the robots' movement over time.
         """
@@ -228,6 +228,9 @@ class Experiment(object):
 
         # Check that a configuration history exists.
         assert self.savehist, 'ERROR: No history to animate'
+
+        # Check that the desired frame rate is valid.
+        assert frame > 0, 'ERROR: Frame rate must be positive value'
 
         # Get data and parameters.
         configs, final = self.runs_data[run][iter]
@@ -243,12 +246,13 @@ class Experiment(object):
         cmap = np.vectorize(lambda x : cm.inferno(x))
         c = np.array(cmap(np.linspace(0, 0.9, N))).T
 
-        # Set up frame rate to target at most 25fps in real time.
-        frame_step = 1 if step >= 0.04 else int(0.04 / step)
+        # Set up frame rate to target at most xfps in real time, where 'frame' =
+        # x.
+        frame_step = 1 if step >= 1 / frame else ceil(1 / frame / step)
         interval = (step * frame_step) * 1000  # ms
 
         ims = []
-        max_dist = hypot(*(2*r + np.array([fig_min, fig_max])))
+        max_dist = hypot(*np.full(2, fig_max-fig_min))
         for s in tqdm(np.arange(0, min(len(configs), final), frame_step)):
             title = plt.text(1.0, 1.02, '{:.2f}s of {}s'.format(s*step, time), \
                              ha='right', va='bottom', transform=ax.transAxes)
