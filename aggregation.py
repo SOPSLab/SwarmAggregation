@@ -109,9 +109,14 @@ def sense(config, i, r, sensor):
 
     Returns: True if another robot is in the sensor region; False otherwise.
     """
+    # Unpack relevant data for robot i.
     x_i, y_i, theta_i = config[i]
     cw = (theta_i - sensor / 2 + 2*np.pi) % (2*np.pi)
     ccw = (theta_i + sensor / 2 + 2*np.pi) % (2*np.pi)
+
+    # The sensor's origin is at robot i's periphery, not its center.
+    sensor_x = x_i + r * cos(theta_i)
+    sensor_y = y_i + r * sin(theta_i)
 
     for j in range(len(config)):
         # A robot never sees itself.
@@ -120,7 +125,7 @@ def sense(config, i, r, sensor):
 
         # Get robot j's center and precompute differences for efficiency.
         x_j, y_j, _ = config[j]
-        x_diff, y_diff = x_j - x_i, y_j - y_i
+        x_diff, y_diff = x_j - sensor_x, y_j - sensor_y
 
         # If robot j's center is in robot i's sight sensor, j is seen.
         if sensor > 0:
@@ -148,7 +153,8 @@ def sense(config, i, r, sensor):
                 if in_ccw:  # Robot j's center is in both boundaries.
                     return True
 
-        # Next, if the robots' centers are closer than their radius, j is seen.
+        # Next, if robot j's center is within its radius of robot i's sensor
+        # origin, j is seen.
         dist = hypot(x_diff, y_diff)
         if dist <= r:
             return True

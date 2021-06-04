@@ -246,8 +246,7 @@ class Experiment(object):
         cmap = np.vectorize(lambda x : cm.inferno(x))
         c = np.array(cmap(np.linspace(0, 0.9, N))).T
 
-        # Set up frame rate to target at most xfps in real time, where 'frame' =
-        # x.
+        # Set up frame rate to target at most 'frame' fps in real time.
         frame_step = 1 if step >= 1 / frame else ceil(1 / frame / step)
         interval = (step * frame_step) * 1000  # ms
 
@@ -258,28 +257,29 @@ class Experiment(object):
                              ha='right', va='bottom', transform=ax.transAxes)
             robots, lines, cones = [], [], []
             for i in range(N):
-                robot = configs[s][i]
+                xy, theta = configs[s][i][:2], configs[s][i][2]
+                sensor_xy = xy + np.array([r * cos(theta), r * sin(theta)])
 
                 # Add this robot's circle artist.
-                robots.append(plt.Circle(robot[:2], radius=r, linewidth=0, \
-                                         color=c[i]))
+                robots.append(plt.Circle(xy, radius=r, linewidth=0, color=c[i]))
 
                 # Add this robot's sight sensor direction artist.
-                vec = max_dist * np.array([cos(robot[2]), sin(robot[2])])
-                lines.append([robot[:2], robot[:2] + vec])
+                vec = max_dist * np.array([cos(theta), sin(theta)])
+                lines.append([sensor_xy, sensor_xy + vec])
 
                 # Add this robot's cone-of-sight polygon artist.
                 if sensor > 0:
-                    cw, ccw = robot[2] - sensor / 2, robot[2] + sensor / 2
+                    cw, ccw = theta - sensor / 2, theta + sensor / 2
                     vec_cw = max_dist * np.array([cos(cw), sin(cw)])
                     vec_ccw = max_dist * np.array([cos(ccw), sin(ccw)])
-                    tri_pts = [robot[:2], robot[:2]+vec_cw, robot[:2]+vec_ccw]
-                    cones.append(plt.Polygon(tri_pts, color=c[i], alpha=0.3))
+                    tri_pts = [sensor_xy, sensor_xy+vec_cw, sensor_xy+vec_ccw]
+                    cones.append(plt.Polygon(tri_pts, color=c[i], alpha=0.15))
 
             # Add this step's artists to the list of artists.
-            robots = PatchCollection(robots, match_original=True)
-            lines = LineCollection(lines, linewidths=0.5, colors=c, alpha=0.75)
-            cones = PatchCollection(cones, match_original=True)
+            robots = PatchCollection(robots, match_original=True, zorder=3)
+            lines = LineCollection(lines, linewidths=0.5, colors=c, alpha=0.75,\
+                                   zorder=2)
+            cones = PatchCollection(cones, match_original=True, zorder=1)
             ims.append([title, ax.add_collection(robots), \
                         ax.add_collection(lines), ax.add_collection(cones)])
 
