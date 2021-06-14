@@ -301,7 +301,7 @@ def load_exp(fname):
 
 ### DATA EXPERIMENTS ###
 
-def exp_base(seed=None):
+def exp_base(seed=None, num_procs=1, rank=0):
     """
     With default parameters, investigate aggregation over time.
     """
@@ -313,7 +313,7 @@ def exp_base(seed=None):
     exp.animate(run=0, iter=0)
 
 
-def exp_symm(seed=None):
+def exp_symm(seed=None, num_procs=1, rank=0):
     """
     With default parameters and symmetric initialization, investigate
     aggregation over time for a few system sizes.
@@ -328,43 +328,49 @@ def exp_symm(seed=None):
                  title='Symmetric Initial Configuration')
 
 
-def exp_errprob(seed=None):
+def exp_errprob(seed=None, num_procs=1, rank=0):
     """
     With default parameters and a range of error probabilities, investigate
     average time to aggregation with a 15% stopping condition.
     """
     N = [10, 25, 50, 100]
     errprob = np.arange(0, 0.501, 0.0125)
+    errprob = np.array_split(errprob, num_procs)[rank]
     params = {'N' : N, 'noise' : [('err', p) for p in errprob], 'stop' : [0.15]}
-    exp = Experiment('errprob', params, iters=10, savehist=False, seed=seed)
+    exp = Experiment('errprob_{}'.format(rank), params, iters=25, \
+                     savehist=False, seed=seed)
     exp.run()
     exp.save()
     exp.plot_aggtime(N, errprob, 'Error Probability')
 
 
-def exp_motion(seed=None):
+def exp_motion(seed=None, num_procs=1, rank=0):
     """
     With default parameters and a range of motion noise strengths, investigate
     average time to aggregation with a 15% stopping condition.
     """
     N = [10, 25, 50, 100]
     fmax = np.arange(0, 40.1, 1.25)
+    fmax = np.array_split(fmax, num_procs)[rank]
     params = {'N' : N, 'noise' : [('mot', f) for f in fmax], 'stop' : [0.15]}
-    exp = Experiment('motion', params, iters=10, savehist=False, seed=seed)
+    exp = Experiment('motion_{}'.format(rank), params, iters=25, \
+                     savehist=False, seed=seed)
     exp.run()
     exp.save()
     exp.plot_aggtime(N, fmax, 'Max. Noise Force (N)')
 
 
-def exp_cone(seed=None):
+def exp_cone(seed=None, num_procs=1, rank=0):
     """
     With default parameters and a range of sight sensor sizes, investigate
     average time to aggregation with a 15% stopping condition.
     """
     N = [10, 25, 50, 100]
     sensor = np.arange(0, np.pi, 0.1)
+    sensor = np.array_split(sensor, num_procs)[rank]
     params = {'N' : N, 'sensor' : sensor, 'stop' : [0.15]}
-    exp = Experiment('cone', params, iters=10, savehist=False, seed=seed)
+    exp = Experiment('cone_{}'.format(rank), params, iters=25, savehist=False, \
+                     seed=seed)
     exp.run()
     exp.save()
     exp.plot_aggtime(N, sensor, 'Sight Sensor Size (rad)')
@@ -372,7 +378,7 @@ def exp_cone(seed=None):
 
 ### CALIBRATION EXPERIMENTS ###
 
-def exp_step(seed=None):
+def exp_step(seed=None, num_procs=1, rank=0):
     """
     With default parameters and a range of time step durations, investigate
     aggregation over time.
@@ -393,10 +399,14 @@ if __name__ == '__main__':
                         help='IDs of experiments to run')
     parser.add_argument('-R', '--rand_seed', type=int, default=None, \
                         help='Seed for random number generation')
+    parser.add_argument('-P', '--num_procs', type=int, default=1, \
+                        help='Number of processors available')
+    parser.add_argument('-K', '--rank', type=int, default=0, \
+                        help='Rank of the processor running this job')
     args = parser.parse_args()
 
     # Run selected experiments.
     exps = {'base' : exp_base, 'symm' : exp_symm, 'errprob' : exp_errprob, \
             'motion' : exp_motion, 'cone' : exp_cone, 'step' : exp_step}
     for id in args.exps:
-        exps[id](args.rand_seed)
+        exps[id](args.rand_seed, args.num_procs, args.rank)
