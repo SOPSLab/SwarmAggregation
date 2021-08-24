@@ -1,7 +1,7 @@
 # Project:     SwarmAggregation
 # Filename:    metrics.py
 # Authors:     Joshua J. Daymude (jdaymude@asu.edu) and Noble C. Harasha
-#              (nharasha1202@gmail.com).
+#              (nharasha@mit.com).
 
 """
 metrics: A library of aggregation metrics.

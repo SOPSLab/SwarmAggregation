@@ -7,7 +7,7 @@ Informally, the algorithm has two rules:
 1. If another robot is seen, then rotate clockwise in place.
 2. Otherwise, rotate clockwise about a center of rotation that is 90 degrees counter-clockwise from the sight sensor's axis.
 
-SwarmAggregation is used in [this whitepaper](arXiv TODO) to investigate the robustness of the original algorithm to different types of noise and error as well as its performance when using different types of sight sensors.
+SwarmAggregation is used in ['Deadlock and Noise in Self-Organized Aggregation Without Computation'](https://arxiv.org/abs/2108.09403) to investigate the robustness of the original algorithm to different types of noise and error as well as its performance when using different types of sight sensors.
 Its implementation has the following parameters:
 
 | Parameter | Description |

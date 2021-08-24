@@ -336,7 +336,7 @@ def exp_errprob(seed=None):
     N = [10, 25, 50, 100]
     errprob = np.arange(0, 0.501, 0.0125)
     params = {'N' : N, 'noise' : [('err', p) for p in errprob], 'stop' : [0.15]}
-    exp = Experiment('errprob', params, iters=10, savehist=False, seed=seed)
+    exp = Experiment('errprob', params, iters=25, savehist=False, seed=seed)
     exp.run()
     exp.save()
     exp.plot_aggtime(N, errprob, 'Error Probability')
@@ -350,7 +350,7 @@ def exp_motion(seed=None):
     N = [10, 25, 50, 100]
     fmax = np.arange(0, 40.1, 1.25)
     params = {'N' : N, 'noise' : [('mot', f) for f in fmax], 'stop' : [0.15]}
-    exp = Experiment('motion', params, iters=10, savehist=False, seed=seed)
+    exp = Experiment('motion', params, iters=25, savehist=False, seed=seed)
     exp.run()
     exp.save()
     exp.plot_aggtime(N, fmax, 'Max. Noise Force (N)')
@@ -364,7 +364,7 @@ def exp_cone(seed=None):
     N = [10, 25, 50, 100]
     sensor = np.arange(0, np.pi, 0.1)
     params = {'N' : N, 'sensor' : sensor, 'stop' : [0.15]}
-    exp = Experiment('cone', params, iters=10, savehist=False, seed=seed)
+    exp = Experiment('cone', params, iters=25, savehist=False, seed=seed)
     exp.run()
     exp.save()
     exp.plot_aggtime(N, sensor, 'Sight Sensor Size (rad)')
